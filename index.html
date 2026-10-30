@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spin Glass 3D Simulation</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h1 id="mainTitle">Tempo de Relaxação de Nanopartículas Magnéticas (3D)</h1>
+
+        <button id="langToggleBtn" class="toggle-btn">Idioma: Português</button>
+
+        <select name="Estados" id="estadosSelect">
+            <option id="opt0" value="0" selected>Selecione um Estado</option>
+            <option id="opt1" value="1.3">q = 1.3 (Super-difusivo)</option>
+            <option id="opt2" value="1.2">q = 1.2 (Super-difusivo)</option>
+            <option id="optX" value="1.1">q = 1.1 (Super-difusivo)</option>
+            <option id="opt3" value="1.0">q = 1.0 (Néel-Brown)</option>
+            <option id="opt4" value="0.9">q = 0.9 (Sub-difusivo)</option>
+            <option id="opt5" value="0.8">q = 0.8 (Sub-difusivo)</option>
+            <option id="opt6" value="0.7">q = 0.7 (Vidro de Spin)</option>
+        </select>
+
+        <h3 id="eqHeading" class="section-heading">Equação utilizada:</h3>
+        <div id="equationDisplay" class="equation-box">
+            <span id="eqPlaceholder">Selecione um Estado</span>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-box">
+                <strong>q = <span id="qLabel">1.00</span></strong>
+            </div>
+            <div class="stat-box">
+                <strong>&tau; = <span id="tauLabel">0.00 s</span></strong>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stat-box">
+                <strong id="tLabel">T = 150 K</strong>
+            </div>
+            <div class="stat-box">
+                <strong>T<sub>cut-off</sub> = <span id="tCutoffLabel">0.0 K</span></strong>
+            </div>
+        </div>
+
+        <div class="record-container">
+            <h3 id="recordHeading" class="section-heading">Gravar Vídeo:</h3>
+            <input type="text" id="recordFilename" class="record-input" placeholder="Nome do arquivo (opcional)">
+            <div class="record-row">
+                <input type="number" id="recordDuration" class="record-input" value="5" min="1" max="60">
+                <span id="recordSecLabel">seg</span>
+                <button id="recordBtn">Gravar</button>
+            </div>
+            <div id="recordNote">
+                Nota: O formato salvo (MP4 ou WebM) depende do suporte do seu navegador. Se for salvo em WebM e não abrir, arraste o arquivo para o seu navegador para assisti-lo.
+            </div>
+        </div>
+
+        <div class="accordion-container">
+            <button id="infoToggleBtn" class="accordion-btn">
+                <span id="infoToggleText">Info da Simulação</span>
+                <span id="accordionIcon">+</span>
+            </button>
+
+            <div id="infoBox" class="accordion-content">
+                <div>
+                    <h4 id="infoTitle">Sobre a Simulação 3D</h4>
+                    <ul>
+                        <li id="info1"><strong>Partículas:</strong> Nanopartículas magnéticas (MNPs) com interações dipolares.</li>
+                        <li id="info2"><strong>Setas:</strong> Momentos de dipolo magnético orientados em 3D.</li>
+                        <li id="info3"><strong>Giros de 180&deg;:</strong> Relaxação de Néel estocástica influenciada pelo tempo de relaxação \(\tau\).</li>
+                    </ul>
+
+                    <h4 id="glossaryTitle" class="spaced">Variáveis</h4>
+                    <ul>
+                        <li id="info5"><strong>\(q\):</strong> Índice entrópico (força de interação).</li>
+                        <li id="info6"><strong>\(\tau\):</strong> Tempo de relaxação (tempo médio de espera entre giros).</li>
+                        <li id="info7"><strong>\(T\):</strong> Temperatura ambiente (fixada em 150 K).</li>
+                        <li id="info8"><strong>\(T_{cut-off}\):</strong> Limite de temperatura crítica de congelamento.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <div class="controls-hint">🖱️ Drag to rotate | Scroll to zoom | Right-click to pan</div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

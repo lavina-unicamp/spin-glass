@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MNP Relaxation Time Simulation - LAvina (IFGW/Unicamp)</title>
+    <title>MNP Relaxation Time Simulation - LAVINA (IFGW/Unicamp)</title>
 
     <link rel="stylesheet" href="style.css">
 
@@ -22,41 +22,34 @@
             <strong>DOI:</strong> <a href="https://doi.org/10.1103/nln9-87b6" target="_blank" rel="noopener">10.1103/nln9-87b6</a>
         </div>
 
-        <!-- Language Switcher (3 Buttons) -->
-        <div class="lang-selector">
-            <button class="lang-btn active" data-lang="pt">PT</button>
-            <button class="lang-btn" data-lang="en">ENG</button>
-            <button class="lang-btn" data-lang="es">SPN</button>
-        </div>
-
         <!-- Simulation Mode Switcher -->
         <div class="mode-selector">
-            <button id="modeVaryQ" class="mode-btn active">Varia q (T fixo)</button>
-            <button id="modeVaryT" class="mode-btn">Varia T (q fixo)</button>
+            <button id="modeVaryQ" class="mode-btn active">Vary q (Fixed T)</button>
+            <button id="modeVaryT" class="mode-btn">Vary T (Fixed q)</button>
         </div>
 
         <!-- Select q-parameter -->
-        <label id="selectLabel" for="estadosSelect" class="section-heading">Selecione o parâmetro q:</label>
+        <label id="selectLabel" for="estadosSelect" class="section-heading">Select q-parameter:</label>
         <select name="Estados" id="estadosSelect">
-            <option id="opt0" value="0" selected>Selecione o parâmetro q</option>
-            <option id="opt1" value="1.3">q = 1.3 (Super-difusivo)</option>
-            <option id="opt2" value="1.2">q = 1.2 (Super-difusivo)</option>
-            <option id="optX" value="1.1">q = 1.1 (Super-difusivo)</option>
+            <option id="opt0" value="0" selected>Select q-parameter</option>
+            <option id="opt1" value="1.3">q = 1.3 (Super-diffusive)</option>
+            <option id="opt2" value="1.2">q = 1.2 (Super-diffusive)</option>
+            <option id="optX" value="1.1">q = 1.1 (Super-diffusive)</option>
             <option id="opt3" value="1.0">q = 1.0 (Néel-Brown)</option>
-            <option id="opt4" value="0.9">q = 0.9 (Sub-difusivo)</option>
-            <option id="opt5" value="0.8">q = 0.8 (Sub-difusivo)</option>
-            <option id="opt6" value="0.7">q = 0.7 (Vidro de Spin)</option>
+            <option id="opt4" value="0.9">q = 0.9 (Sub-diffusive)</option>
+            <option id="opt5" value="0.8">q = 0.8 (Sub-diffusive)</option>
+            <option id="opt6" value="0.7">q = 0.7 (Spin-Glass)</option>
         </select>
 
         <!-- Temperature Slider (Hidden by default, shown in Vary T mode) -->
         <div id="tempSliderContainer" class="slider-container hidden">
-            <label id="tempSliderLabel" for="tempSlider" class="section-heading">Temperatura (T): <span id="tSliderVal">150</span> K</label>
+            <label id="tempSliderLabel" for="tempSlider" class="section-heading">Temperature (T): <span id="tSliderVal">150</span> K</label>
             <input type="range" id="tempSlider" min="50" max="300" step="5" value="150">
         </div>
 
-        <h3 id="eqHeading" class="section-heading">Equação utilizada:</h3>
+        <h3 id="eqHeading" class="section-heading">Equation being used:</h3>
         <div id="equationDisplay" class="equation-box">
-            <span id="eqPlaceholder">Selecione o parâmetro q</span>
+            <span id="eqPlaceholder">Select q-parameter</span>
         </div>
 
         <div class="stats-row">
@@ -77,49 +70,49 @@
         </div>
 
         <div class="record-container">
-            <h3 id="recordHeading" class="section-heading">Gravar Vídeo:</h3>
-            <input type="text" id="recordFilename" class="record-input" placeholder="Nome do arquivo (opcional)">
+            <h3 id="recordHeading" class="section-heading">Record Video:</h3>
+            <input type="text" id="recordFilename" class="record-input" placeholder="Filename (optional)">
             <div class="record-row">
                 <input type="number" id="recordDuration" class="record-input" value="5" min="1" max="60">
-                <span id="recordSecLabel">seg</span>
-                <button id="recordBtn">Gravar</button>
+                <span id="recordSecLabel">sec</span>
+                <button id="recordBtn">Record</button>
             </div>
             <div id="recordNote">
-                Nota: O formato salvo (MP4 ou WebM) depende do suporte do seu navegador.
+                Note: Saved format (MP4 or WebM) depends on your browser support.
             </div>
         </div>
 
         <div class="accordion-container">
             <button id="infoToggleBtn" class="accordion-btn">
-                <span id="infoToggleText">Info da Simulação</span>
+                <span id="infoToggleText">Simulation Info</span>
                 <span id="accordionIcon">+</span>
             </button>
 
             <div id="infoBox" class="accordion-content">
                 <div>
-                    <h4 id="infoTitle">Sobre a Simulação 3D</h4>
-                    <p id="disclaimerNote" class="disclaimer"><em>Nota: Esta simulação tem fins exclusivamente ilustrativos.</em></p>
+                    <h4 id="infoTitle">About the 3D Simulation</h4>
+                    <p id="disclaimerNote" class="disclaimer"><em>Note: This simulation is for illustrative purposes only.</em></p>
 
                     <ul>
-                        <li id="info1"><strong>Partículas:</strong> Nanopartículas magnéticas (MNPs) com interações dipolares.</li>
-                        <li id="info2"><strong>Setas:</strong> Momentos de dipolo magnético orientados em 3D.</li>
-                        <li id="info3"><strong>Giros de 180&deg;:</strong> Relaxação de Néel estocástica influenciada pelo tempo de relaxação \(\tau\).</li>
+                        <li id="info1"><strong>Particles:</strong> Magnetic nanoparticles (MNPs) with dipolar interactions.</li>
+                        <li id="info2"><strong>Arrows:</strong> Magnetic dipole moments oriented in 3D.</li>
+                        <li id="info3"><strong>180&deg; Flips:</strong> Stochastic Néel relaxation influenced by relaxation time \(\tau\).</li>
                     </ul>
 
-                    <h4 id="glossaryTitle" class="spaced">Variáveis</h4>
+                    <h4 id="glossaryTitle" class="spaced">Variables</h4>
                     <ul>
-                        <li id="info5"><strong>\(q\):</strong> Índice entrópico (força de interação).</li>
-                        <li id="info6"><strong>\(\tau\):</strong> Tempo de relaxação (tempo médio de espera entre giros).</li>
-                        <li id="info7"><strong>\(T\):</strong> Temperatura ambiente.</li>
-                        <li id="info8"><strong>\(T_{cut-off}\):</strong> Limite de temperatura crítica de congelamento.</li>
+                        <li id="info5"><strong>\(q\):</strong> Entropic index (interaction strength).</li>
+                        <li id="info6"><strong>\(\tau\):</strong> Relaxation time (average wait between flips).</li>
+                        <li id="info7"><strong>\(T\):</strong> Environmental temperature.</li>
+                        <li id="info8"><strong>\(T_{cut-off}\):</strong> Critical freezing threshold.</li>
                     </ul>
 
-                    <h4 id="creditsTitle" class="spaced">Créditos & Produção</h4>
+                    <h4 id="creditsTitle" class="spaced">Credits & Production</h4>
                     <div id="creditsContent">
-                        <p><strong>Autores:</strong> Jean Claudio Cardoso Cerbino, Diego Muraca</p>
-                        <p><strong>Laboratório:</strong> LAVINA</p>
-                        <p><strong>Instituição:</strong> IFGW - Instituto de Física Gleb Wataghin, Unicamp</p>
-                        <p><strong>Contato/Email:</strong> <a href="mailto:lavina@ifi.unicamp.br">lavina@ifi.unicamp.br</a></p>
+                        <p><strong>Authors:</strong> Jean Claudio Cardoso Cerbino, Diego Muraca</p>
+                        <p><strong>Group:</strong> LAVINA (Interactive Virtual Laboratory)</p>
+                        <p><strong>Institution:</strong> IFGW - Gleb Wataghin Institute of Physics, Unicamp</p>
+                        <p><strong>Contact:</strong> <a href="mailto:lavina@ifi.unicamp.br">lavina@ifi.unicamp.br</a></p>
                     </div>
                 </div>
             </div>
@@ -127,7 +120,7 @@
     </div>
 
     <div id="canvas-container">
-        <!-- LAvina Watermark -->
+        <!-- LAVINA Watermark -->
         <div class="watermark">
             <span class="wm-brand">LAVINA</span>
             <span class="wm-sub">IFGW • Unicamp</span>

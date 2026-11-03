@@ -1,7 +1,6 @@
 // ==========================================
 // PHYSICS & SIMULATION CONSTANTS
 // ==========================================
-let currentLang = 'pt';
 const DELTA_V_KB = 555;
 const TAU_0 = 1e-11;
 
@@ -147,10 +146,7 @@ function updateQmSprite() {
 
     qmCtx.fillStyle = '#c9d1d9';
     qmCtx.font = 'bold 32px "Segoe UI", sans-serif';
-    let text = 'Configuração Espacial Desconhecida';
-    if (currentLang === 'en') text = 'Unknown Spatial Configuration';
-    if (currentLang === 'es') text = 'Configuración Espacial Desconocida';
-    qmCtx.fillText(text, 512, 170);
+    qmCtx.fillText('Unknown Spatial Configuration', 512, 170);
 
     qmTex.needsUpdate = true;
 }
@@ -525,7 +521,7 @@ recordBtn.addEventListener('click', () => {
 
         setTimeout(() => document.body.removeChild(a), 100);
 
-        recordBtn.innerText = currentLang === 'en' ? 'Record' : 'Gravar';
+        recordBtn.innerText = 'Record';
         recordBtn.classList.remove('recording');
         recordBtn.disabled = false;
     };
@@ -537,9 +533,7 @@ recordBtn.addEventListener('click', () => {
     recordBtn.disabled = true;
 
     const updateTimerText = () => {
-        recordBtn.innerText = currentLang === 'en'
-            ? `Recording... (${elapsedSeconds}s / ${durationSec}s)`
-            : `Gravando... (${elapsedSeconds}s / ${durationSec}s)`;
+        recordBtn.innerText = `Recording... (${elapsedSeconds}s / ${durationSec}s)`;
     };
 
     updateTimerText();
@@ -552,170 +546,6 @@ recordBtn.addEventListener('click', () => {
         if (mediaRecorder.state === 'recording') mediaRecorder.stop();
     }, durationMs);
 });
-
-// ==========================================
-// LANGUAGE TRANSLATIONS
-// ==========================================
-const translations = {
-    en: {
-        mainTitle: "A Generalized Approach to Relaxation Time of Magnetic Nanoparticles With Interactions: From Superparamagnetic to Glassy-Like Freezing",
-        authors: "J. C. Cardoso Cerbino and D. Muraca",
-        selectLabel: "Select q-parameter:",
-        opt0: "Select q-parameter",
-        opt1: "q = 1.3 (Super-diffusive)",
-        opt2: "q = 1.2 (Super-diffusive)",
-        optX: "q = 1.1 (Super-diffusive)",
-        opt3: "q = 1.0 (Néel-Brown)",
-        opt4: "q = 0.9 (Sub-diffusive)",
-        opt5: "q = 0.8 (Sub-diffusive)",
-        opt6: "q = 0.7 (Spin-Glass)",
-        modeVaryQ: "Vary q (Fixed T)",
-        modeVaryT: "Vary T (Fixed q)",
-        eqHeading: "Equation being used:",
-        eqPlaceholder: "Select q-parameter",
-        infoBtnText: "Simulation Info",
-        infoTitle: "About the 3D Simulation",
-        disclaimer: "Note: This simulation is for illustrative purposes only.",
-        info1: "<strong>Particles:</strong> Magnetic nanoparticles (MNPs) with dipolar interactions.",
-        info2: "<strong>Arrows:</strong> Magnetic dipole moments oriented in 3D.",
-        info3: "<strong>180&deg; Flips:</strong> Stochastic Néel relaxation influenced by relaxation time \\(\\tau\\).",
-        glossaryTitle: "Variables",
-        info5: "<strong>\\(q\\):</strong> Entropic index (interaction strength).",
-        info6: "<strong>\\(\\tau\\):</strong> Relaxation time (average wait between flips).",
-        info7: "<strong>\\(T\\):</strong> Environmental temperature.",
-        info8: "<strong>\\(T_{cut-off}\\):</strong> Critical freezing threshold.",
-        creditsTitle: "Credits & Production",
-        creditsText: "<strong>Authors:</strong> Jean Claudio Cardoso Cerbino, Diego Muraca<br><strong>Group:</strong> LAVINA (Interactive Virtual Laboratory)<br><strong>Institution:</strong> IFGW - Gleb Wataghin Institute of Physics, Unicamp<br><strong>Contact:</strong> <a href='mailto:lavina@ifi.unicamp.br'>lavina@ifi.unicamp.br</a>",
-        recordHeading: "Record Video:",
-        recordFilenamePlaceholder: "Filename (optional)",
-        recordSecLabel: "sec",
-        recordBtn: "Record",
-        recordNote: "Note: Saved format (MP4 or WebM) depends on your browser support."
-    },
-    pt: {
-        mainTitle: "A Generalized Approach to Relaxation Time of Magnetic Nanoparticles With Interactions: From Superparamagnetic to Glassy-Like Freezing",
-        authors: "J. C. Cardoso Cerbino e D. Muraca",
-        selectLabel: "Selecione o parâmetro q:",
-        opt0: "Selecione o parâmetro q",
-        opt1: "q = 1.3 (Super-difusivo)",
-        opt2: "q = 1.2 (Super-difusivo)",
-        optX: "q = 1.1 (Super-difusivo)",
-        opt3: "q = 1.0 (Néel-Brown)",
-        opt4: "q = 0.9 (Sub-difusivo)",
-        opt5: "q = 0.8 (Sub-difusivo)",
-        opt6: "q = 0.7 (Vidro de Spin)",
-        modeVaryQ: "Varia q (T fixo)",
-        modeVaryT: "Varia T (q fixo)",
-        eqHeading: "Equação utilizada:",
-        eqPlaceholder: "Selecione o parâmetro q",
-        infoBtnText: "Info da Simulação",
-        infoTitle: "Sobre a Simulação 3D",
-        disclaimer: "Nota: Esta simulação tem fins exclusivamente ilustrativos.",
-        info1: "<strong>Partículas:</strong> Nanopartículas magnéticas (MNPs) com interações dipolares.",
-        info2: "<strong>Setas:</strong> Momentos de dipolo magnético orientados em 3D.",
-        info3: "<strong>Giros de 180&deg;:</strong> Relaxação de Néel estocástica influenciada pelo tempo de relaxação \\(\\tau\\).",
-        glossaryTitle: "Variáveis",
-        info5: "<strong>\(q\):</strong> Índice entrópico (força de interação).",
-        info6: "<strong>\(\tau\):</strong> Tempo de relaxação (tempo médio de espera entre giros).",
-        info7: "<strong>\(T\):</strong> Temperatura ambiente.",
-        info8: "<strong>\(T_{cut-off}\):</strong> Limite de temperatura crítica de congelamento.",
-        creditsTitle: "Créditos e Produção",
-        creditsText: "<strong>Autores:</strong> Jean Claudio Cardoso Cerbino, Diego Muraca<br><strong>Grupo:</strong> LAVINA (Laboratório Virtual Interativo)<br><strong>Instituição:</strong> IFGW - Instituto de Física Gleb Wataghin, Unicamp<br><strong>Contato:</strong> <a href='mailto:lavina@ifi.unicamp.br'>lavina@ifi.unicamp.br</a>",
-        recordHeading: "Gravar Vídeo:",
-        recordFilenamePlaceholder: "Nome do arquivo (opcional)",
-        recordSecLabel: "seg",
-        recordBtn: "Gravar",
-        recordNote: "Nota: O formato salvo (MP4 ou WebM) depende do suporte do seu navegador."
-    },
-    es: {
-        mainTitle: "A Generalized Approach to Relaxation Time of Magnetic Nanoparticles With Interactions: From Superparamagnetic to Glassy-Like Freezing",
-        authors: "J. C. Cardoso Cerbino y D. Muraca",
-        selectLabel: "Seleccione el parámetro q:",
-        opt0: "Seleccione el parámetro q",
-        opt1: "q = 1.3 (Super-difusivo)",
-        opt2: "q = 1.2 (Super-difusivo)",
-        optX: "q = 1.1 (Super-difusivo)",
-        opt3: "q = 1.0 (Néel-Brown)",
-        opt4: "q = 0.9 (Sub-difusivo)",
-        opt5: "q = 0.8 (Sub-difusivo)",
-        opt6: "q = 0.7 (Vidro de Spin)",
-        modeVaryQ: "Varía q (T fijo)",
-        modeVaryT: "Varía T (q fijo)",
-        eqHeading: "Ecuación utilizada:",
-        eqPlaceholder: "Seleccione el parámetro q",
-        infoBtnText: "Info de la Simulación",
-        infoTitle: "Sobre la Simulación 3D",
-        disclaimer: "Nota: Esta simulación es solo para fines ilustrativos.",
-        info1: "<strong>Partículas:</strong> Nanopartículas magnéticas (MNPs) con interacciones dipolares.",
-        info2: "<strong>Flechas:</strong> Momentos de dipolo magnético orientados en 3D.",
-        info3: "<strong>Giros de 180&deg;:</strong> Relajación de Néel estocástica influenciada por el tiempo de relajación \\(\\tau\\).",
-        glossaryTitle: "Variables",
-        info5: "<strong>\\(q\\):</strong> Índice entrópico (fuerza de interacción).",
-        info6: "<strong>\\(\\tau\\):</strong> Tiempo de relajación (tiempo promedio de espera entre giros).",
-        info7: "<strong>\\(T\\):</strong> Temperatura ambiente.",
-        info8: "<strong>\\(T_{cut-off}\\):</strong> Límite de temperatura crítica de congelación.",
-        creditsTitle: "Créditos y Producción",
-        creditsText: "<strong>Autores:</strong> Jean Claudio Cardoso Cerbino, Diego Muraca<br><strong>Grupo:</strong> LAVINA (Laboratorio Virtual Interactivo)<br><strong>Institución:</strong> IFGW - Instituto de Física Gleb Wataghin, Unicamp<br><strong>Contacto:</strong> <a href='mailto:lavina@ifi.unicamp.br'>lavina@ifi.unicamp.br</a>",
-        recordHeading: "Grabar Video:",
-        recordFilenamePlaceholder: "Nombre del archivo (opcional)",
-        recordSecLabel: "seg",
-        recordBtn: "Grabar",
-        recordNote: "Nota: El formato guardado (MP4 o WebM) depende de su navegador."
-    }
-};
-
-document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        const lang = e.target.getAttribute('data-lang');
-        switchLanguage(lang);
-    });
-});
-
-function switchLanguage(lang) {
-    currentLang = lang;
-    const t = translations[lang];
-
-    document.getElementById('mainTitle').innerText = t.mainTitle;
-    document.getElementById('authorsLabel').innerText = t.authors;
-    document.getElementById('selectLabel').innerText = t.selectLabel;
-    document.getElementById('opt0').innerText = t.opt0;
-    document.getElementById('opt1').innerText = t.opt1;
-    document.getElementById('opt2').innerText = t.opt2;
-    document.getElementById('optX').innerText = t.optX;
-    document.getElementById('opt3').innerText = t.opt3;
-    document.getElementById('opt4').innerText = t.opt4;
-    document.getElementById('opt5').innerText = t.opt5;
-    document.getElementById('opt6').innerText = t.opt6;
-    document.getElementById('modeVaryQ').innerText = t.modeVaryQ;
-    document.getElementById('modeVaryT').innerText = t.modeVaryT;
-    document.getElementById('eqHeading').innerText = t.eqHeading;
-    document.getElementById('infoTitle').innerText = t.infoTitle;
-    document.getElementById('disclaimerNote').innerText = t.disclaimer;
-    document.getElementById('infoToggleText').innerText = t.infoBtnText;
-    document.getElementById('creditsTitle').innerText = t.creditsTitle;
-    document.getElementById('creditsContent').innerHTML = t.creditsText;
-    document.getElementById('recordHeading').innerText = t.recordHeading;
-    document.getElementById('recordFilename').placeholder = t.recordFilenamePlaceholder;
-    document.getElementById('recordSecLabel').innerText = t.recordSecLabel;
-    document.getElementById('recordNote').innerText = t.recordNote;
-    document.getElementById('recordBtn').innerText = t.recordBtn;
-
-    document.getElementById('info1').innerHTML = t.info1;
-    document.getElementById('info2').innerHTML = t.info2;
-    document.getElementById('info3').innerHTML = t.info3;
-    document.getElementById('info5').innerHTML = t.info5;
-    document.getElementById('info6').innerHTML = t.info6;
-    document.getElementById('info7').innerHTML = t.info7;
-    document.getElementById('info8').innerHTML = t.info8;
-
-    updateQmSprite();
-
-    if (window.MathJax) {
-        MathJax.typesetPromise([document.getElementById('infoBox')]);
-    }
-}
 
 // ==========================================
 // ANIMATION LOOP

@@ -174,12 +174,18 @@ const hudMat = new THREE.SpriteMaterial({ map: hudTex, transparent: true });
 const hudSprite = new THREE.Sprite(hudMat);
 hudSprite.scale.set(HUD_WIDTH, HUD_HEIGHT, 1);
 
-hudSprite.position.set(-container.clientWidth / 2 + 170, -container.clientHeight / 2 + 110, 0);
+// Initial position: Top-left corner
+hudSprite.position.set(
+    -container.clientWidth / 2 + HUD_WIDTH / 2 + 20,
+    container.clientHeight / 2 - HUD_HEIGHT / 2 - 20,
+    0
+);
 hudScene.add(hudSprite);
 
 function updateHUD(qVal, tVal, tCutoff, tauText) {
     hudCtx.clearRect(0, 0, HUD_WIDTH, HUD_HEIGHT);
 
+    // Draw background card with rounded corners
     hudCtx.fillStyle = 'rgba(13, 17, 23, 0.90)';
     hudCtx.beginPath();
     if (hudCtx.roundRect) hudCtx.roundRect(0, 0, HUD_WIDTH, HUD_HEIGHT, 10);
@@ -189,20 +195,40 @@ function updateHUD(qVal, tVal, tCutoff, tauText) {
     hudCtx.lineWidth = 3;
     hudCtx.stroke();
 
+    // Drag handle bar
     hudCtx.fillStyle = '#30363d';
     hudCtx.fillRect(120, 8, 60, 4);
 
-    hudCtx.fillStyle = '#ffffff';
-    hudCtx.font = 'bold 20px "Segoe UI", sans-serif';
     hudCtx.textAlign = 'left';
     hudCtx.textBaseline = 'top';
 
-    hudCtx.fillText(`q = ${qVal.toFixed(2)}`, 20, 25);
-    hudCtx.fillText(`T = ${tVal} K`, 20, 60);
-    hudCtx.fillText(`T_cutoff = ${tCutoff.toFixed(1)} K`, 20, 95);
+    // Variable: q
+    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
+    hudCtx.fillStyle = '#ffffff';
+    hudCtx.fillText('q', 20, 25);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${qVal.toFixed(2)}`, 35, 25);
 
+    // Variable: T
+    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
+    hudCtx.fillText('T', 20, 60);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${tVal} K`, 38, 60);
+
+    // Variable: T_cut-off
+    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
+    hudCtx.fillText('T', 20, 95);
+    hudCtx.font = '13px "Segoe UI", sans-serif';
+    hudCtx.fillText('cut-off', 34, 105);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${tCutoff.toFixed(1)} K`, 75, 95);
+
+    // Variable: tau
+    hudCtx.font = 'bold 22px "Times New Roman", serif';
     hudCtx.fillStyle = '#58a6ff';
-    hudCtx.fillText(`τ = ${tauText}`, 20, 130);
+    hudCtx.fillText('τ', 20, 130);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${tauText}`, 38, 130);
 
     hudTex.needsUpdate = true;
 }
@@ -473,11 +499,13 @@ function updatePhysics(q, tVal) {
         tauHTMLDisplay = "0 s";
         plainTauText = "0 s";
     } else {
-        const [baseStr, exponentStr] = tau.toExponential(2).split('e');
-        const expVal = parseInt(exponentStr, 10);
-        tauHTMLDisplay = `${baseStr} &times; 10<sup>${expVal}</sup> s`;
-        plainTauText = `${baseStr} x 10^${expVal} s`;
-    }
+    const [baseStr, exponentStr] = tau.toExponential(2).split('e');
+    const expVal = parseInt(exponentStr, 10);
+    // LaTeX scientific format: base × 10^{exp} s
+    plainTauText = `${baseStr} × 10^{${expVal}} s`;
+}
+
+    updateHUD(q, currentT, T_cutoff, plainTauText);
 
     const qLabelEl = document.getElementById('qLabel');
     const tauLabelEl = document.getElementById('tauLabel');
@@ -671,6 +699,7 @@ recordBtn.addEventListener('click', () => {
 // DEFAULT RESET ON PAGE LOAD / REFRESH
 // ==========================================
 function resetToDefaults() {
+    updateHUD(1.0, 150, 0, "Select q");
     currentT = 150;
     currentTau = Infinity;
     currentQ = 1.0;

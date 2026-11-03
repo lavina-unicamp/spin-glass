@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spin Glass 3D Simulation</title>
+    <title>MNP Relaxation Time Simulation - LAvina (IFGW/Unicamp)</title>
 
     <link rel="stylesheet" href="style.css">
 
@@ -15,12 +15,30 @@
 <body>
 
     <div id="ui-layer">
-        <h1 id="mainTitle">Tempo de Relaxação de Nanopartículas Magnéticas (3D)</h1>
+        <!-- Title & Citation -->
+        <h1 id="mainTitle">A Generalized Approach to Relaxation Time of Magnetic Nanoparticles With Interactions: From Superparamagnetic to Glassy-Like Freezing</h1>
+        <div id="citationBox">
+            <span id="authorsLabel">J. C. Cardoso Cerbino and D. Muraca</span><br>
+            <strong>DOI:</strong> <a href="https://doi.org/10.1103/nln9-87b6" target="_blank" rel="noopener">10.1103/nln9-87b6</a>
+        </div>
 
-        <button id="langToggleBtn" class="toggle-btn">Idioma: Português</button>
+        <!-- Language Switcher (3 Buttons) -->
+        <div class="lang-selector">
+            <button class="lang-btn active" data-lang="pt">PT</button>
+            <button class="lang-btn" data-lang="en">ENG</button>
+            <button class="lang-btn" data-lang="es">SPN</button>
+        </div>
 
+        <!-- Simulation Mode Switcher -->
+        <div class="mode-selector">
+            <button id="modeVaryQ" class="mode-btn active">Varia q (T fixo)</button>
+            <button id="modeVaryT" class="mode-btn">Varia T (q fixo)</button>
+        </div>
+
+        <!-- Select q-parameter -->
+        <label id="selectLabel" for="estadosSelect" class="section-heading">Selecione o parâmetro q:</label>
         <select name="Estados" id="estadosSelect">
-            <option id="opt0" value="0" selected>Selecione um Estado</option>
+            <option id="opt0" value="0" selected>Selecione o parâmetro q</option>
             <option id="opt1" value="1.3">q = 1.3 (Super-difusivo)</option>
             <option id="opt2" value="1.2">q = 1.2 (Super-difusivo)</option>
             <option id="optX" value="1.1">q = 1.1 (Super-difusivo)</option>
@@ -30,9 +48,15 @@
             <option id="opt6" value="0.7">q = 0.7 (Vidro de Spin)</option>
         </select>
 
+        <!-- Temperature Slider (Hidden by default, shown in Vary T mode) -->
+        <div id="tempSliderContainer" class="slider-container hidden">
+            <label id="tempSliderLabel" for="tempSlider" class="section-heading">Temperatura (T): <span id="tSliderVal">150</span> K</label>
+            <input type="range" id="tempSlider" min="50" max="300" step="5" value="150">
+        </div>
+
         <h3 id="eqHeading" class="section-heading">Equação utilizada:</h3>
         <div id="equationDisplay" class="equation-box">
-            <span id="eqPlaceholder">Selecione um Estado</span>
+            <span id="eqPlaceholder">Selecione o parâmetro q</span>
         </div>
 
         <div class="stats-row">
@@ -61,7 +85,7 @@
                 <button id="recordBtn">Gravar</button>
             </div>
             <div id="recordNote">
-                Nota: O formato salvo (MP4 ou WebM) depende do suporte do seu navegador. Se for salvo em WebM e não abrir, arraste o arquivo para o seu navegador para assisti-lo.
+                Nota: O formato salvo (MP4 ou WebM) depende do suporte do seu navegador.
             </div>
         </div>
 
@@ -74,6 +98,8 @@
             <div id="infoBox" class="accordion-content">
                 <div>
                     <h4 id="infoTitle">Sobre a Simulação 3D</h4>
+                    <p id="disclaimerNote" class="disclaimer"><em>Nota: Esta simulação tem fins exclusivamente ilustrativos.</em></p>
+
                     <ul>
                         <li id="info1"><strong>Partículas:</strong> Nanopartículas magnéticas (MNPs) com interações dipolares.</li>
                         <li id="info2"><strong>Setas:</strong> Momentos de dipolo magnético orientados em 3D.</li>
@@ -84,18 +110,32 @@
                     <ul>
                         <li id="info5"><strong>\(q\):</strong> Índice entrópico (força de interação).</li>
                         <li id="info6"><strong>\(\tau\):</strong> Tempo de relaxação (tempo médio de espera entre giros).</li>
-                        <li id="info7"><strong>\(T\):</strong> Temperatura ambiente (fixada em 150 K).</li>
+                        <li id="info7"><strong>\(T\):</strong> Temperatura ambiente.</li>
                         <li id="info8"><strong>\(T_{cut-off}\):</strong> Limite de temperatura crítica de congelamento.</li>
                     </ul>
+
+                    <h4 id="creditsTitle" class="spaced">Créditos & Produção</h4>
+                    <div id="creditsContent">
+                        <p><strong>Autores:</strong> Jean Claudio Cardoso Cerbino, Diego Muraca</p>
+                        <p><strong>Laboratório:</strong> LAVINA</p>
+                        <p><strong>Instituição:</strong> IFGW - Instituto de Física Gleb Wataghin, Unicamp</p>
+                        <p><strong>Contato/Email:</strong> <a href="mailto:lavina@ifi.unicamp.br">lavina@ifi.unicamp.br</a></p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="canvas-container">
+        <!-- LAvina Watermark -->
+        <div class="watermark">
+            <span class="wm-brand">LAVINA</span>
+            <span class="wm-sub">IFGW • Unicamp</span>
+        </div>
+
         <div class="controls-hint">🖱️ Drag to rotate | Scroll to zoom | Right-click to pan</div>
     </div>
 
-    <script src="js/main.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>

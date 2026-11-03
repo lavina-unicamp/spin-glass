@@ -7,7 +7,6 @@ const TAU_0 = 1e-11;
 let currentT = 150;
 let currentTau = Infinity;
 let currentQ = 1.0;
-let simMode = 'varyQ'; // 'varyQ' or 'varyT'
 
 const T_CUTOFF_CURVES = {
     0.7: [{ T: 100, Tc: 104 }, { T: 125, Tc: 93 }, { T: 150, Tc: 90 }, { T: 175, Tc: 87 }, { T: 200, Tc: 84 }, { T: 250, Tc: 81 }],
@@ -77,7 +76,7 @@ boxLine.material.transparent = true;
 boxLine.material.opacity = 0.8;
 scene.add(boxLine);
 
-// Opaque Volume for q > 1 (Surrounding Environment Visual Cue)
+// Opaque Volume for q > 1
 const opaqueVolumeGeo = new THREE.BoxGeometry(BOUNDING_BOX * 1.1, BOUNDING_BOX * 1.1, BOUNDING_BOX * 1.1);
 const opaqueVolumeMat = new THREE.MeshStandardMaterial({
     color: 0x388bfd,
@@ -153,7 +152,7 @@ function updateQmSprite() {
 updateQmSprite();
 
 // ==========================================
-// HUD OVERLAY SCENE & DRAGGABLE LOGIC
+// HUD OVERLAY SCENE & DRAGGABLE PHYSICS CARD
 // ==========================================
 const hudScene = new THREE.Scene();
 const hudCamera = new THREE.OrthographicCamera(
@@ -175,14 +174,12 @@ const hudMat = new THREE.SpriteMaterial({ map: hudTex, transparent: true });
 const hudSprite = new THREE.Sprite(hudMat);
 hudSprite.scale.set(HUD_WIDTH, HUD_HEIGHT, 1);
 
-// Initial position: Bottom-left corner
 hudSprite.position.set(-container.clientWidth / 2 + 170, -container.clientHeight / 2 + 110, 0);
 hudScene.add(hudSprite);
 
 function updateHUD(qVal, tVal, tCutoff, tauText) {
     hudCtx.clearRect(0, 0, HUD_WIDTH, HUD_HEIGHT);
 
-    // Draw background card with rounded corners
     hudCtx.fillStyle = 'rgba(13, 17, 23, 0.90)';
     hudCtx.beginPath();
     if (hudCtx.roundRect) hudCtx.roundRect(0, 0, HUD_WIDTH, HUD_HEIGHT, 10);
@@ -192,11 +189,9 @@ function updateHUD(qVal, tVal, tCutoff, tauText) {
     hudCtx.lineWidth = 3;
     hudCtx.stroke();
 
-    // Draw header / handle bar indicator
     hudCtx.fillStyle = '#30363d';
     hudCtx.fillRect(120, 8, 60, 4);
 
-    // Render physics variables
     hudCtx.fillStyle = '#ffffff';
     hudCtx.font = 'bold 20px "Segoe UI", sans-serif';
     hudCtx.textAlign = 'left';
@@ -213,7 +208,7 @@ function updateHUD(qVal, tVal, tCutoff, tauText) {
 }
 
 // ==========================================
-// HUD WATERMARK WITH LAVINA LOGO
+// HUD WATERMARK WITH LAVINA BRANDING & LOGO
 // ==========================================
 const WM_WIDTH = 340;
 const WM_HEIGHT = 90;
@@ -224,17 +219,44 @@ wmCanvas.height = WM_HEIGHT;
 const wmCtx = wmCanvas.getContext('2d');
 
 const wmTex = new THREE.CanvasTexture(wmCanvas);
-const wmMat = new THREE.SpriteMaterial({ map: wmTex, transparent: true, opacity: 0.9 });
+const wmMat = new THREE.SpriteMaterial({ map: wmTex, transparent: true, opacity: 0.95 });
 const wmSprite = new THREE.Sprite(wmMat);
 wmSprite.scale.set(WM_WIDTH, WM_HEIGHT, 1);
 
-// Position in Top-Right Corner
 wmSprite.position.set(container.clientWidth / 2 - WM_WIDTH / 2 - 15, container.clientHeight / 2 - WM_HEIGHT / 2 - 15, 0);
 hudScene.add(wmSprite);
 
+const logoImg = new Image();
+logoImg.src = 'logo-lavina-nome.jpg';
+
+function drawWatermark() {
+    wmCtx.clearRect(0, 0, WM_WIDTH, WM_HEIGHT);
+
+    if (logoImg.complete && logoImg.naturalWidth !== 0) {
+        wmCtx.drawImage(logoImg, WM_WIDTH - 330, 10, 70, 70);
+    }
+
+    wmCtx.textAlign = 'right';
+    wmCtx.textBaseline = 'top';
+
+    wmCtx.fillStyle = '#ffffff';
+    wmCtx.font = '800 32px "Segoe UI", sans-serif';
+    wmCtx.fillText('LAVINA', WM_WIDTH - 10, 12);
+
+    wmCtx.fillStyle = '#58a6ff';
+    wmCtx.font = '700 14px "Segoe UI", sans-serif';
+    wmCtx.fillText('IFGW • UNICAMP', WM_WIDTH - 10, 52);
+
+    wmTex.needsUpdate = true;
+}
+
+drawWatermark();
+logoImg.onload = () => {
+    drawWatermark();
+};
 
 // ==========================================
-// MOUSE DRAG EVENT HANDLERS FOR HUD
+// MOUSE DRAG HANDLERS FOR HUD CARD
 // ==========================================
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -246,7 +268,6 @@ function getCanvasHUDCoords(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Convert mouse event coordinates to HUD Orthographic space
     const hudX = x - container.clientWidth / 2;
     const hudY = -(y - container.clientHeight / 2);
     return new THREE.Vector3(hudX, hudY, 0);
@@ -262,7 +283,7 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 
     if (intersects.length > 0) {
         isDraggingHUD = true;
-        controls.enabled = false; // Disable OrbitControls while dragging HUD box
+        controls.enabled = false;
         const clickWorldPos = getCanvasHUDCoords(e);
         dragOffset.subVectors(hudSprite.position, clickWorldPos);
     }
@@ -274,7 +295,6 @@ renderer.domElement.addEventListener('pointermove', (e) => {
     const mouseHUDPos = getCanvasHUDCoords(e);
     const newPos = mouseHUDPos.add(dragOffset);
 
-    // Clamping boundaries to prevent dragging the box out of screen view
     const minX = -container.clientWidth / 2 + HUD_WIDTH / 2;
     const maxX = container.clientWidth / 2 - HUD_WIDTH / 2;
     const minY = -container.clientHeight / 2 + HUD_HEIGHT / 2;
@@ -287,7 +307,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 window.addEventListener('pointerup', () => {
     if (isDraggingHUD) {
         isDraggingHUD = false;
-        controls.enabled = true; // Re-enable camera controls
+        controls.enabled = true;
     }
 });
 
@@ -443,7 +463,6 @@ function updatePhysics(q, tVal) {
 
     currentTau = tau;
 
-    // Control Panel HTML Formatting
     let tauHTMLDisplay = "";
     let plainTauText = "";
 
@@ -460,7 +479,6 @@ function updatePhysics(q, tVal) {
         plainTauText = `${baseStr} x 10^${expVal} s`;
     }
 
-    // Update Control Panel Elements
     const qLabelEl = document.getElementById('qLabel');
     const tauLabelEl = document.getElementById('tauLabel');
     const tLabelEl = document.getElementById('tLabel');
@@ -479,7 +497,6 @@ function updatePhysics(q, tVal) {
         }
     }
 
-    // Update Canvas HUD
     updateHUD(q, currentT, T_cutoff, plainTauText);
 }
 
@@ -506,8 +523,7 @@ estadosSelect.addEventListener('change', function () {
         removeParticles(PARTICLES.length - numBolas);
     }
 
-    // Dynamic slider locking logic
-    if (qVal < 1.0) {
+    if (qVal <= 1.0) {
         tempSlider.disabled = false;
         tempLockNote.style.display = 'none';
     } else {
@@ -530,8 +546,6 @@ tempSlider.addEventListener('input', (e) => {
     document.getElementById('tSliderVal').innerText = currentT;
     if (currentQ > 0) updatePhysics(currentQ, currentT);
 });
-
-
 
 // Accordion Interaction
 const infoToggleBtn = document.getElementById('infoToggleBtn');
@@ -561,7 +575,6 @@ window.addEventListener('resize', () => {
     hudCamera.bottom = -height / 2;
     hudCamera.updateProjectionMatrix();
 
-    // Re-anchor Watermark Sprite to Top-Right
     wmSprite.position.set(width / 2 - WM_WIDTH / 2 - 15, height / 2 - WM_HEIGHT / 2 - 15, 0);
 });
 
@@ -653,6 +666,61 @@ recordBtn.addEventListener('click', () => {
         if (mediaRecorder.state === 'recording') mediaRecorder.stop();
     }, durationMs);
 });
+
+// ==========================================
+// DEFAULT RESET ON PAGE LOAD / REFRESH
+// ==========================================
+function resetToDefaults() {
+    currentT = 150;
+    currentTau = Infinity;
+    currentQ = 1.0;
+
+    if (estadosSelect) {
+        estadosSelect.value = "0";
+        document.getElementById("opt0").disabled = false;
+    }
+
+    if (tempSlider) {
+        tempSlider.value = 150;
+        tempSlider.disabled = true;
+    }
+
+    const tSliderVal = document.getElementById('tSliderVal');
+    if (tSliderVal) tSliderVal.innerText = 150;
+
+    const tempLockNote = document.getElementById('tempLockNote');
+    if (tempLockNote) {
+        tempLockNote.style.display = 'block';
+        tempLockNote.innerText = 'Select a q parameter to enable temperature adjustments';
+    }
+
+    if (PARTICLES.length > 0) {
+        removeParticles(PARTICLES.length);
+    }
+    generateParticle();
+
+    if (typeof qmSprite !== 'undefined') qmSprite.visible = false;
+    if (typeof opaqueVolumeMesh !== 'undefined') opaqueVolumeMesh.visible = false;
+
+    const qLabel = document.getElementById('qLabel');
+    const tauLabel = document.getElementById('tauLabel');
+    const tLabel = document.getElementById('tLabel');
+    const tCutoffLabel = document.getElementById('tCutoffLabel');
+    const eqDiv = document.getElementById('equationDisplay');
+
+    if (qLabel) qLabel.innerText = "1.00";
+    if (tauLabel) tauLabel.innerHTML = "0.00 s";
+    if (tLabel) tLabel.innerText = "T = 150 K";
+    if (tCutoffLabel) tCutoffLabel.innerText = "0.0 K";
+    if (eqDiv) eqDiv.innerHTML = '<span id="eqPlaceholder">Select q-parameter</span>';
+
+    updateHUD(1.0, 150, 0, "Select q");
+}
+
+document.addEventListener('DOMContentLoaded', resetToDefaults);
+window.onbeforeunload = () => {
+    resetToDefaults();
+};
 
 // ==========================================
 // ANIMATION LOOP

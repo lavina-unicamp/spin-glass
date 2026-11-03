@@ -24,7 +24,7 @@
 
         <!-- Select q-parameter -->
         <label id="selectLabel" for="estadosSelect" class="section-heading">Select q-parameter:</label>
-        <select name="Estados" id="estadosSelect">
+        <select name="Estados" id="estadosSelect" autocomplete="off">
             <option id="opt0" value="0" selected>Select q-parameter</option>
             <option id="opt1" value="1.3">q = 1.3 (Super-diffusive)</option>
             <option id="opt2" value="1.2">q = 1.2 (Super-diffusive)</option>
@@ -40,7 +40,7 @@
             <label id="tempSliderLabel" for="tempSlider" class="section-heading">
                 Temperature (T): <span id="tSliderVal">150</span> K
             </label>
-            <input type="range" id="tempSlider" min="50" max="300" step="5" value="150" disabled>
+            <input type="range" id="tempSlider" min="50" max="300" step="5" value="150" disabled autocomplete="off">
             <div id="tempLockNote" class="slider-note">Select a q parameter to enable temperature adjustments</div>
         </div>
 

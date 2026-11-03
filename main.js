@@ -152,7 +152,9 @@ function updateQmSprite() {
 }
 updateQmSprite();
 
-// HUD Overlay Scene
+// ==========================================
+// HUD OVERLAY SCENE & DRAGGABLE LOGIC
+// ==========================================
 const hudScene = new THREE.Scene();
 const hudCamera = new THREE.OrthographicCamera(
     -container.clientWidth / 2, container.clientWidth / 2,
@@ -161,37 +163,133 @@ const hudCamera = new THREE.OrthographicCamera(
 );
 hudCamera.position.z = 5;
 
+const HUD_WIDTH = 300;
+const HUD_HEIGHT = 180;
+
 const hudCanvas = document.createElement('canvas');
-hudCanvas.width = 240;
-hudCanvas.height = 70;
+hudCanvas.width = HUD_WIDTH;
+hudCanvas.height = HUD_HEIGHT;
 const hudCtx = hudCanvas.getContext('2d');
 const hudTex = new THREE.CanvasTexture(hudCanvas);
 const hudMat = new THREE.SpriteMaterial({ map: hudTex, transparent: true });
 const hudSprite = new THREE.Sprite(hudMat);
-hudSprite.scale.set(240, 70, 1);
-hudSprite.position.set(-container.clientWidth / 2 + 140, container.clientHeight / 2 - 50, 0);
+hudSprite.scale.set(HUD_WIDTH, HUD_HEIGHT, 1);
+
+// Initial position: Bottom-left corner
+hudSprite.position.set(-container.clientWidth / 2 + 170, -container.clientHeight / 2 + 110, 0);
 hudScene.add(hudSprite);
 
-function updateHUD(qVal) {
-    hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
+function updateHUD(qVal, tVal, tCutoff, tauText) {
+    hudCtx.clearRect(0, 0, HUD_WIDTH, HUD_HEIGHT);
 
-    hudCtx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+    // Draw background card with rounded corners
+    hudCtx.fillStyle = 'rgba(13, 17, 23, 0.90)';
     hudCtx.beginPath();
-    if (hudCtx.roundRect) hudCtx.roundRect(0, 0, 240, 70, 10);
-    else hudCtx.rect(0, 0, 240, 70);
+    if (hudCtx.roundRect) hudCtx.roundRect(0, 0, HUD_WIDTH, HUD_HEIGHT, 10);
+    else hudCtx.rect(0, 0, HUD_WIDTH, HUD_HEIGHT);
     hudCtx.fill();
     hudCtx.strokeStyle = '#58a6ff';
     hudCtx.lineWidth = 3;
     hudCtx.stroke();
 
+    // Draw header / handle bar indicator
+    hudCtx.fillStyle = '#30363d';
+    hudCtx.fillRect(120, 8, 60, 4);
+
+    // Render physics variables
     hudCtx.fillStyle = '#ffffff';
-    hudCtx.font = 'bold 32px "Segoe UI", sans-serif';
-    hudCtx.textAlign = 'center';
-    hudCtx.textBaseline = 'middle';
-    hudCtx.fillText(`q = ${qVal.toFixed(2)}`, 120, 35);
+    hudCtx.font = 'bold 20px "Segoe UI", sans-serif';
+    hudCtx.textAlign = 'left';
+    hudCtx.textBaseline = 'top';
+
+    hudCtx.fillText(`q = ${qVal.toFixed(2)}`, 20, 25);
+    hudCtx.fillText(`T = ${tVal} K`, 20, 60);
+    hudCtx.fillText(`T_cutoff = ${tCutoff.toFixed(1)} K`, 20, 95);
+
+    hudCtx.fillStyle = '#58a6ff';
+    hudCtx.fillText(`τ = ${tauText}`, 20, 130);
 
     hudTex.needsUpdate = true;
 }
+
+// ==========================================
+// HUD WATERMARK WITH LAVINA LOGO
+// ==========================================
+const WM_WIDTH = 340;
+const WM_HEIGHT = 90;
+
+const wmCanvas = document.createElement('canvas');
+wmCanvas.width = WM_WIDTH;
+wmCanvas.height = WM_HEIGHT;
+const wmCtx = wmCanvas.getContext('2d');
+
+const wmTex = new THREE.CanvasTexture(wmCanvas);
+const wmMat = new THREE.SpriteMaterial({ map: wmTex, transparent: true, opacity: 0.9 });
+const wmSprite = new THREE.Sprite(wmMat);
+wmSprite.scale.set(WM_WIDTH, WM_HEIGHT, 1);
+
+// Position in Top-Right Corner
+wmSprite.position.set(container.clientWidth / 2 - WM_WIDTH / 2 - 15, container.clientHeight / 2 - WM_HEIGHT / 2 - 15, 0);
+hudScene.add(wmSprite);
+
+
+// ==========================================
+// MOUSE DRAG EVENT HANDLERS FOR HUD
+// ==========================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let isDraggingHUD = false;
+const dragOffset = new THREE.Vector3();
+
+function getCanvasHUDCoords(e) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Convert mouse event coordinates to HUD Orthographic space
+    const hudX = x - container.clientWidth / 2;
+    const hudY = -(y - container.clientHeight / 2);
+    return new THREE.Vector3(hudX, hudY, 0);
+}
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, hudCamera);
+    const intersects = raycaster.intersectObject(hudSprite);
+
+    if (intersects.length > 0) {
+        isDraggingHUD = true;
+        controls.enabled = false; // Disable OrbitControls while dragging HUD box
+        const clickWorldPos = getCanvasHUDCoords(e);
+        dragOffset.subVectors(hudSprite.position, clickWorldPos);
+    }
+});
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!isDraggingHUD) return;
+
+    const mouseHUDPos = getCanvasHUDCoords(e);
+    const newPos = mouseHUDPos.add(dragOffset);
+
+    // Clamping boundaries to prevent dragging the box out of screen view
+    const minX = -container.clientWidth / 2 + HUD_WIDTH / 2;
+    const maxX = container.clientWidth / 2 - HUD_WIDTH / 2;
+    const minY = -container.clientHeight / 2 + HUD_HEIGHT / 2;
+    const maxY = container.clientHeight / 2 - HUD_HEIGHT / 2;
+
+    hudSprite.position.x = Math.max(minX, Math.min(maxX, newPos.x));
+    hudSprite.position.y = Math.max(minY, Math.min(maxY, newPos.y));
+});
+
+window.addEventListener('pointerup', () => {
+    if (isDraggingHUD) {
+        isDraggingHUD = false;
+        controls.enabled = true; // Re-enable camera controls
+    }
+});
 
 // ==========================================
 // FLIP AND ROTATION LOGIC
@@ -320,8 +418,6 @@ function updatePhysics(q, tVal) {
     let tau = 0;
     let eqText = "";
 
-    updateHUD(q);
-
     if (q === 1.0) {
         tau = TAU_0 * Math.exp(DELTA_V_KB / currentT);
         eqText = "$$\\tau = \\tau_0 \\exp\\left(\\frac{\\Delta V}{k_B T}\\right)$$";
@@ -347,30 +443,44 @@ function updatePhysics(q, tVal) {
 
     currentTau = tau;
 
-    // Inside updatePhysics(q, tVal)
-    let tauDisplay = "";
-    let phaseDisplay = "";
+    // Control Panel HTML Formatting
+    let tauHTMLDisplay = "";
+    let plainTauText = "";
 
     if (tau === Infinity) {
-        tauDisplay = "∞";
-        phaseDisplay = " (Frozen / Glassy-like)";
+        tauHTMLDisplay = "∞ <span style='font-size:11px; color:#e3b341;'>(Frozen / Spin-Glass)</span>";
+        plainTauText = "∞ (Frozen)";
     } else if (tau === 0) {
-        tauDisplay = "0 s";
+        tauHTMLDisplay = "0 s";
+        plainTauText = "0 s";
     } else {
         const [baseStr, exponentStr] = tau.toExponential(2).split('e');
-        tauDisplay = `${baseStr} &times; 10<sup>${parseInt(exponentStr)}</sup> s`;
+        const expVal = parseInt(exponentStr, 10);
+        tauHTMLDisplay = `${baseStr} &times; 10<sup>${expVal}</sup> s`;
+        plainTauText = `${baseStr} x 10^${expVal} s`;
     }
 
-    document.getElementById('qLabel').innerText = q.toFixed(2);
-    document.getElementById('tauLabel').innerHTML = tauDisplay + phaseDisplay;
-    document.getElementById('tLabel').innerText = `T = ${currentT} K`;
-    document.getElementById('tCutoffLabel').innerText = T_cutoff.toFixed(1) + " K";
+    // Update Control Panel Elements
+    const qLabelEl = document.getElementById('qLabel');
+    const tauLabelEl = document.getElementById('tauLabel');
+    const tLabelEl = document.getElementById('tLabel');
+    const tCutoffLabelEl = document.getElementById('tCutoffLabel');
+
+    if (qLabelEl) qLabelEl.innerText = q.toFixed(2);
+    if (tauLabelEl) tauLabelEl.innerHTML = tauHTMLDisplay;
+    if (tLabelEl) tLabelEl.innerText = `T = ${currentT} K`;
+    if (tCutoffLabelEl) tCutoffLabelEl.innerText = T_cutoff.toFixed(1) + " K";
 
     const eqDiv = document.getElementById('equationDisplay');
-    eqDiv.innerHTML = eqText;
-    if (window.MathJax) {
-        MathJax.typesetPromise([eqDiv]);
+    if (eqDiv) {
+        eqDiv.innerHTML = eqText;
+        if (window.MathJax) {
+            MathJax.typesetPromise([eqDiv]);
+        }
     }
+
+    // Update Canvas HUD
+    updateHUD(q, currentT, T_cutoff, plainTauText);
 }
 
 // Select Change Event
@@ -438,7 +548,6 @@ infoToggleBtn.addEventListener('click', function () {
     }
 });
 
-// Window Resizing
 window.addEventListener('resize', () => {
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -451,7 +560,9 @@ window.addEventListener('resize', () => {
     hudCamera.top = height / 2;
     hudCamera.bottom = -height / 2;
     hudCamera.updateProjectionMatrix();
-    hudSprite.position.set(-width / 2 + 140, height / 2 - 50, 0);
+
+    // Re-anchor Watermark Sprite to Top-Right
+    wmSprite.position.set(width / 2 - WM_WIDTH / 2 - 15, height / 2 - WM_HEIGHT / 2 - 15, 0);
 });
 
 // ==========================================

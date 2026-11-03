@@ -347,9 +347,13 @@ function updatePhysics(q, tVal) {
 
     currentTau = tau;
 
+    // Inside updatePhysics(q, tVal)
     let tauDisplay = "";
+    let phaseDisplay = "";
+
     if (tau === Infinity) {
         tauDisplay = "∞";
+        phaseDisplay = " (Frozen / Glassy-like)";
     } else if (tau === 0) {
         tauDisplay = "0 s";
     } else {
@@ -358,7 +362,7 @@ function updatePhysics(q, tVal) {
     }
 
     document.getElementById('qLabel').innerText = q.toFixed(2);
-    document.getElementById('tauLabel').innerHTML = tauDisplay;
+    document.getElementById('tauLabel').innerHTML = tauDisplay + phaseDisplay;
     document.getElementById('tLabel').innerText = `T = ${currentT} K`;
     document.getElementById('tCutoffLabel').innerText = T_cutoff.toFixed(1) + " K";
 

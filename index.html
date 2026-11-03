@@ -22,12 +22,6 @@
             <strong>DOI:</strong> <a href="https://doi.org/10.1103/nln9-87b6" target="_blank" rel="noopener">10.1103/nln9-87b6</a>
         </div>
 
-        <!-- Simulation Mode Switcher -->
-        <div class="mode-selector">
-            <button id="modeVaryQ" class="mode-btn active">Vary q (Fixed T)</button>
-            <button id="modeVaryT" class="mode-btn">Vary T (Fixed q)</button>
-        </div>
-
         <!-- Select q-parameter -->
         <label id="selectLabel" for="estadosSelect" class="section-heading">Select q-parameter:</label>
         <select name="Estados" id="estadosSelect">
@@ -41,10 +35,13 @@
             <option id="opt6" value="0.7">q = 0.7 (Spin-Glass)</option>
         </select>
 
-        <!-- Temperature Slider (Hidden by default, shown in Vary T mode) -->
-        <div id="tempSliderContainer" class="slider-container hidden">
-            <label id="tempSliderLabel" for="tempSlider" class="section-heading">Temperature (T): <span id="tSliderVal">150</span> K</label>
-            <input type="range" id="tempSlider" min="50" max="300" step="5" value="150">
+        <!-- Temperature Slider -->
+        <div id="tempSliderContainer" class="slider-container">
+            <label id="tempSliderLabel" for="tempSlider" class="section-heading">
+                Temperature (T): <span id="tSliderVal">150</span> K
+            </label>
+            <input type="range" id="tempSlider" min="50" max="300" step="5" value="150" disabled>
+            <div id="tempLockNote" class="slider-note">Select a q parameter to enable temperature adjustments</div>
         </div>
 
         <h3 id="eqHeading" class="section-heading">Equation being used:</h3>
@@ -109,7 +106,7 @@
 
                     <h4 id="creditsTitle" class="spaced">Credits & Production</h4>
                     <div id="creditsContent">
-                        <p><strong>Authors:</strong> Pedro Ribeiro de Oliveira; João Pedro Dadario Pereira</p>
+                        <p><strong>Authors:</strong> Jean Claudio Cardoso Cerbino, Diego Muraca</p>
                         <p><strong>Group:</strong> LAVINA (Interactive Virtual Laboratory)</p>
                         <p><strong>Institution:</strong> IFGW - Gleb Wataghin Institute of Physics, Unicamp</p>
                         <p><strong>Contact:</strong> <a href="mailto:lavina@ifi.unicamp.br">lavina@ifi.unicamp.br</a></p>

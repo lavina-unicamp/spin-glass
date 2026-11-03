@@ -371,6 +371,9 @@ function updatePhysics(q, tVal) {
 
 // Select Change Event
 const estadosSelect = document.getElementById('estadosSelect');
+const tempSlider = document.getElementById('tempSlider');
+const tempLockNote = document.getElementById('tempLockNote');
+
 estadosSelect.addEventListener('change', function () {
     document.getElementById("opt0").disabled = true;
     const qVal = parseFloat(estadosSelect.value);
@@ -389,43 +392,32 @@ estadosSelect.addEventListener('change', function () {
         removeParticles(PARTICLES.length - numBolas);
     }
 
+    // Dynamic slider locking logic
+    if (qVal < 1.0) {
+        tempSlider.disabled = false;
+        tempLockNote.style.display = 'none';
+    } else {
+        tempSlider.disabled = true;
+        currentT = 150;
+        tempSlider.value = 150;
+        document.getElementById('tSliderVal').innerText = 150;
+        tempLockNote.style.display = 'block';
+    }
+
     qmSprite.visible = qVal > 1.0;
     opaqueVolumeMesh.visible = qVal > 1.0;
 
     updatePhysics(qVal, currentT);
 });
 
-// Mode Selector (Vary q vs. Vary T)
-const modeVaryQBtn = document.getElementById('modeVaryQ');
-const modeVaryTBtn = document.getElementById('modeVaryT');
-const tempSliderContainer = document.getElementById('tempSliderContainer');
-const tempSlider = document.getElementById('tempSlider');
-const tSliderVal = document.getElementById('tSliderVal');
-
-modeVaryQBtn.addEventListener('click', () => {
-    simMode = 'varyQ';
-    modeVaryQBtn.classList.add('active');
-    modeVaryTBtn.classList.remove('active');
-    tempSliderContainer.classList.add('hidden');
-    currentT = 150;
-    tempSlider.value = 150;
-    tSliderVal.innerText = 150;
-    if (currentQ > 0) updatePhysics(currentQ, currentT);
-});
-
-modeVaryTBtn.addEventListener('click', () => {
-    simMode = 'varyT';
-    modeVaryTBtn.classList.add('active');
-    modeVaryQBtn.classList.remove('active');
-    tempSliderContainer.classList.remove('hidden');
-    if (currentQ > 0) updatePhysics(currentQ, currentT);
-});
-
+// Temperature Slider Listener
 tempSlider.addEventListener('input', (e) => {
     currentT = parseInt(e.target.value, 10);
-    tSliderVal.innerText = currentT;
+    document.getElementById('tSliderVal').innerText = currentT;
     if (currentQ > 0) updatePhysics(currentQ, currentT);
 });
+
+
 
 // Accordion Interaction
 const infoToggleBtn = document.getElementById('infoToggleBtn');

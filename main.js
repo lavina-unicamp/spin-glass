@@ -509,30 +509,24 @@ function updatePhysics(q, tVal) {
 
     currentTau = tau;
 
-    let tauHTMLDisplay = "";
-    let plainTauText = "";
+    let tauText = "";
 
     if (tau === Infinity) {
-        tauHTMLDisplay = "∞ <span style='font-size:11px; color:#e3b341;'>(Frozen / Spin-Glass)</span>";
-        plainTauText = "∞ (Frozen)";
+        tauText = "∞ (Frozen)";
     } else if (tau === 0) {
-        tauHTMLDisplay = "0 s";
-        plainTauText = "0 s";
+        tauText = "0 s";
+    } else if (tau < 1e-12) {
+        tauText = (tau * 1e15).toFixed(2) + " fs";
+    } else if (tau < 1e-9) {
+        tauText = (tau * 1e12).toFixed(2) + " ps";
+    } else if (tau < 1e-6) {
+        tauText = (tau * 1e9).toFixed(2) + " ns";
+    } else if (tau < 1e-3) {
+        tauText = (tau * 1e6).toFixed(2) + " µs";
+    } else if (tau < 1) {
+        tauText = (tau * 1e3).toFixed(2) + " ms";
     } else {
-        if (tau < 1e-12) {
-            plainTauText = tauHTMLDisplay = (tau * 1e15).toFixed(2) + " fs";
-        } else if (tau < 1e-9) {
-            plainTauText = tauHTMLDisplay = (tau * 1e12).toFixed(2) + " ps";
-        } else if (tau < 1e-6) {
-            plainTauText = tauHTMLDisplay = (tau * 1e9).toFixed(2) + " ns";
-        } else if (tau < 1e-3) {
-            plainTauText = tauHTMLDisplay = (tau * 1e6).toFixed(2) + " µs";
-        } else if (tau < 1) {
-            plainTauText = tauHTMLDisplay = (tau * 1e3).toFixed(2) + " ms";
-        } else {
-            plainTauText = tauHTMLDisplay = tau.toFixed(2) + " s";
-        }
-    
+        tauText = tau.toFixed(2) + " s";
     }
 
     // Direct DOM Updates for Sidebar Panel
@@ -540,22 +534,23 @@ function updatePhysics(q, tVal) {
     const tauLabelEl = document.getElementById('tauLabel');
     const tLabelEl = document.getElementById('tLabel');
     const tCutoffLabelEl = document.getElementById('tCutoffLabel');
+    const eqDiv = document.getElementById('equationDisplay'); // Add equation div
 
     if (qLabelEl) qLabelEl.innerText = q.toFixed(2);
-    if (tauLabelEl) tauLabelEl.innerHTML = tauHTMLDisplay;
-    if (tLabelEl) tLabelEl.innerText = `T = ${currentT} K`;
+    if (tauLabelEl) tauLabelEl.innerText = tauText;
+    if (tLabelEl) tLabelEl.innerText = `${tVal} K`;
     if (tCutoffLabelEl) tCutoffLabelEl.innerText = T_cutoff.toFixed(1) + " K";
-
-    const eqDiv = document.getElementById('equationDisplay');
-    if (eqDiv) {
+    
+    // Inject the equation text and re-render MathJax
+    if (eqDiv && eqText !== "") {
         eqDiv.innerHTML = eqText;
         if (window.MathJax && window.MathJax.typesetPromise) {
-            MathJax.typesetPromise([eqDiv]);
+            MathJax.typesetPromise([eqDiv]).catch((err) => console.error(err.message));
         }
     }
 
     // Update Floating Canvas HUD Card
-    updateHUD(q, currentT, T_cutoff, plainTauText);
+    updateHUD(q, currentT, T_cutoff, tauText);
 }
 
 // Select Change Event
@@ -771,8 +766,8 @@ function resetToDefaults() {
     const eqDiv = document.getElementById('equationDisplay');
 
     if (qLabel) qLabel.innerText = "1.00";
-    if (tauLabel) tauLabel.innerHTML = "0.00 s";
-    if (tLabel) tLabel.innerText = "T = 150 K";
+    if (tauLabel) tauLabel.innerText = "0.00 s";
+    if (tLabel) tLabel.innerText = "150 K";
     if (tCutoffLabel) tCutoffLabel.innerText = "0.0 K";
     if (eqDiv) eqDiv.innerHTML = '<span id="eqPlaceholder">Select q-parameter</span>';
 

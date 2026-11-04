@@ -3,36 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spin Glass 3D Simulation</title>
+    <title>MNP Relaxation Time Simulation - LAVINA (IFGW/Unicamp)</title>
 
     <link rel="stylesheet" href="style.css">
 
     <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
     <div id="ui-layer">
-        <h1 id="mainTitle">Tempo de Relaxação de Nanopartículas Magnéticas (3D)</h1>
+        <!-- Title & Citation -->
+        <h1 id="mainTitle">A Generalized Approach to Relaxation Time of Magnetic Nanoparticles With Interactions: From Superparamagnetic to Glassy-Like Freezing</h1>
+        
+        <div id="citationBox">
+            <div class="ref-heading">Reference Paper:</div>
+            <span id="authorsLabel" class="ref-authors">J. C. Cardoso Cerbino and D. Muraca</span><br>
+            <strong class="ref-doi">DOI:</strong> <a href="https://doi.org/10.1103/nln9-87b6" target="_blank" rel="noopener" class="ref-link">10.1103/nln9-87b6</a>
+            
+            <div class="credits-divider"></div>
+            <div class="ref-heading">Simulation Developers:</div>
+            <div class="dev-names">Pedro Ribeiro de Oliveira & João Pedro Dadario Pereira</div>
+            <div class="group-info">LAVINA Group (IFGW / Unicamp)</div>
+        </div>
 
-        <button id="langToggleBtn" class="toggle-btn">Idioma: Português</button>
-
-        <select name="Estados" id="estadosSelect">
-            <option id="opt0" value="0" selected>Selecione um Estado</option>
-            <option id="opt1" value="1.3">q = 1.3 (Super-difusivo)</option>
-            <option id="opt2" value="1.2">q = 1.2 (Super-difusivo)</option>
-            <option id="optX" value="1.1">q = 1.1 (Super-difusivo)</option>
+        <!-- Select q-parameter -->
+        <label id="selectLabel" for="estadosSelect" class="section-heading">Select q-parameter:</label>
+        <select name="Estados" id="estadosSelect" autocomplete="off">
+            <option id="opt0" value="0" selected>Select q-parameter</option>
+            <option id="opt1" value="1.3">q = 1.3 (Super-diffusive)</option>
+            <option id="opt2" value="1.2">q = 1.2 (Super-diffusive)</option>
+            <option id="optX" value="1.1">q = 1.1 (Super-diffusive)</option>
             <option id="opt3" value="1.0">q = 1.0 (Néel-Brown)</option>
-            <option id="opt4" value="0.9">q = 0.9 (Sub-difusivo)</option>
-            <option id="opt5" value="0.8">q = 0.8 (Sub-difusivo)</option>
-            <option id="opt6" value="0.7">q = 0.7 (Vidro de Spin)</option>
+            <option id="opt4" value="0.9">q = 0.9 (Sub-diffusive)</option>
+            <option id="opt5" value="0.8">q = 0.8 (Sub-diffusive)</option>
+            <option id="opt6" value="0.7">q = 0.7 (Sub-diffusive / Strong Interactions)</option>
         </select>
 
-        <h3 id="eqHeading" class="section-heading">Equação utilizada:</h3>
+        <!-- Temperature Slider -->
+        <div id="tempSliderContainer" class="slider-container">
+            <label id="tempSliderLabel" for="tempSlider" class="section-heading">
+                Temperature (T): <span id="tSliderVal">150</span> K
+            </label>
+            <input type="range" id="tempSlider" min="50" max="300" step="5" value="150" disabled autocomplete="off">
+            <div id="tempLockNote" class="slider-note">Select a q parameter to enable temperature adjustments</div>
+        </div>
+
+        <h3 id="eqHeading" class="section-heading">Equation being used:</h3>
         <div id="equationDisplay" class="equation-box">
-            <span id="eqPlaceholder">Selecione um Estado</span>
+            <span id="eqPlaceholder">Select q-parameter</span>
         </div>
 
         <div class="stats-row">
@@ -45,48 +66,57 @@
         </div>
         <div class="stats-row">
             <div class="stat-box">
-                <strong id="tLabel">T = 150 K</strong>
+                <strong>T = <span id="tLabel">150 K</span></strong>
             </div>
             <div class="stat-box">
-                <strong>T<sub>cut-off</sub> = <span id="tCutoffLabel">0.0 K</span></strong>
+                <strong>T<sub>cutoff</sub> = <span id="tCutoffLabel">0.0 K</span></strong>
             </div>
         </div>
 
         <div class="record-container">
-            <h3 id="recordHeading" class="section-heading">Gravar Vídeo:</h3>
-            <input type="text" id="recordFilename" class="record-input" placeholder="Nome do arquivo (opcional)">
+            <h3 id="recordHeading" class="section-heading">Record Video:</h3>
+            <input type="text" id="recordFilename" class="record-input" placeholder="Filename (optional)">
             <div class="record-row">
                 <input type="number" id="recordDuration" class="record-input" value="5" min="1" max="60">
-                <span id="recordSecLabel">seg</span>
-                <button id="recordBtn">Gravar</button>
+                <span id="recordSecLabel">sec</span>
+                <button id="recordBtn">Record</button>
             </div>
             <div id="recordNote">
-                Nota: O formato salvo (MP4 ou WebM) depende do suporte do seu navegador. Se for salvo em WebM e não abrir, arraste o arquivo para o seu navegador para assisti-lo.
+                Note: Saved format (MP4 or WebM) depends on your browser support.
             </div>
         </div>
 
         <div class="accordion-container">
             <button id="infoToggleBtn" class="accordion-btn">
-                <span id="infoToggleText">Info da Simulação</span>
+                <span id="infoToggleText">Simulation Info</span>
                 <span id="accordionIcon">+</span>
             </button>
 
             <div id="infoBox" class="accordion-content">
                 <div>
-                    <h4 id="infoTitle">Sobre a Simulação 3D</h4>
+                    <h4 id="infoTitle">About the 3D Simulation</h4>
+                    <p id="disclaimerNote" class="disclaimer"><em>Note: This simulation is for illustrative purposes only.</em></p>
+
                     <ul>
-                        <li id="info1"><strong>Partículas:</strong> Nanopartículas magnéticas (MNPs) com interações dipolares.</li>
-                        <li id="info2"><strong>Setas:</strong> Momentos de dipolo magnético orientados em 3D.</li>
-                        <li id="info3"><strong>Giros de 180&deg;:</strong> Relaxação de Néel estocástica influenciada pelo tempo de relaxação \(\tau\).</li>
+                        <li id="info1"><strong>Particles:</strong> Magnetic nanoparticles (MNPs) with dipolar interactions.</li>
+                        <li id="info2"><strong>Arrows:</strong> Magnetic dipole moments oriented in 3D.</li>
+                        <li id="info3"><strong>180&deg; Flips:</strong> Stochastic Néel relaxation influenced by relaxation time \(\tau\).</li>
                     </ul>
 
-                    <h4 id="glossaryTitle" class="spaced">Variáveis</h4>
+                    <h4 id="glossaryTitle" class="spaced">Variables</h4>
                     <ul>
-                        <li id="info5"><strong>\(q\):</strong> Índice entrópico (força de interação).</li>
-                        <li id="info6"><strong>\(\tau\):</strong> Tempo de relaxação (tempo médio de espera entre giros).</li>
-                        <li id="info7"><strong>\(T\):</strong> Temperatura ambiente (fixada em 150 K).</li>
-                        <li id="info8"><strong>\(T_{cut-off}\):</strong> Limite de temperatura crítica de congelamento.</li>
+                        <li id="info5"><strong>\(q\):</strong> Entropic index (interaction strength).</li>
+                        <li id="info6"><strong>\(\tau\):</strong> Relaxation time (average wait between flips).</li>
+                        <li id="info7"><strong>\(T\):</strong> Environmental temperature.</li>
+                        <li id="info8"><strong>\(T_{cutoff}\):</strong> Critical freezing threshold.</li>
                     </ul>
+
+                    <h4 id="creditsTitle" class="spaced">Contact & Info</h4>
+                    <div id="creditsContent">
+                        <p><strong>Group:</strong> LAVINA (Interactive Virtual Laboratory)</p>
+                        <p><strong>Institution:</strong> IFGW - Gleb Wataghin Institute of Physics, Unicamp</p>
+                        <p><strong>Contact:</strong> <a href="mailto:lavina@ifi.unicamp.br">lavina@ifi.unicamp.br</a></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -96,6 +126,6 @@
         <div class="controls-hint">🖱️ Drag to rotate | Scroll to zoom | Right-click to pan</div>
     </div>
 
-    <script src="js/main.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>

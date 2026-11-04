@@ -1,11 +1,10 @@
 // ==========================================
 // PHYSICS & SIMULATION CONSTANTS
 // ==========================================
-let currentLang = 'pt';
 const DELTA_V_KB = 555;
 const TAU_0 = 1e-11;
-const T = 150;
 
+let currentT = 150;
 let currentTau = Infinity;
 let currentQ = 1.0;
 
@@ -15,23 +14,54 @@ const T_CUTOFF_CURVES = {
     0.9: [{ T: 50,  Tc: 46 },  { T: 100, Tc: 40 }, { T: 150, Tc: 34 }, { T: 200, Tc: 31 }, { T: 250, Tc: 29 }]
 };
 
-function calculateTCutoff(q, currentT) {
+const T_STAR_CURVES = {
+    0.7: [{ T: 50, Ts: 10 }, { T: 100, Ts: 18 }, { T: 150, Ts: 32 }, { T: 200, Ts: 40 }, { T: 250, Ts: 47 }],
+    0.8: [{ T: 75, Ts: 12 }, { T: 100, Ts: 15 }, { T: 150, Ts: 25 }, { T: 200, Ts: 30 }, { T: 250, Ts: 36 }],
+    0.9: [{ T: 50, Ts: 4 },  { T: 100, Ts: 10 }, { T: 150, Ts: 15 }, { T: 200, Ts: 18 }, { T: 250, Ts: 21 }]
+};
+
+function calculateTStar(q, tVal) {
+    if (q >= 1.0 || !T_STAR_CURVES[q]) return 0;
+    const curve = T_STAR_CURVES[q];
+    if (tVal <= curve[0].T) return curve[0].Ts;
+    if (tVal >= curve[curve.length - 1].T) return curve[curve.length - 1].Ts;
+    for (let i = 0; i < curve.length - 1; i++) {
+        if (tVal >= curve[i].T && tVal <= curve[i + 1].T) {
+            const slope = (curve[i + 1].Ts - curve[i].Ts) / (curve[i + 1].T - curve[i].T);
+            return curve[i].Ts + slope * (tVal - curve[i].T);
+        }
+    }
+    return 0;
+}
+
+
+function calculateTCutoff(q, tVal) {
     if (q >= 1.0) return 0;
     const curve = T_CUTOFF_CURVES[q];
     if (!curve) return 0;
 
-    if (currentT <= curve[0].T) return curve[0].Tc;
-    if (currentT >= curve[curve.length - 1].T) return curve[curve.length - 1].Tc;
+    if (tVal <= curve[0].T) return curve[0].Tc;
+    if (tVal >= curve[curve.length - 1].T) return curve[curve.length - 1].Tc;
 
     for (let i = 0; i < curve.length - 1; i++) {
         const p1 = curve[i];
         const p2 = curve[i + 1];
-        if (currentT >= p1.T && currentT <= p2.T) {
+        if (tVal >= p1.T && tVal <= p2.T) {
             const slope = (p2.Tc - p1.Tc) / (p2.T - p1.T);
-            return p1.Tc + slope * (currentT - p1.T);
+            return p1.Tc + slope * (tVal - p1.T);
         }
     }
     return 0;
+}
+
+// Helper to convert exponent integers into unicode superscripts for Canvas HUD
+function toSuperscript(numStr) {
+    const superscripts = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        '-': '⁻', '+': '⁺'
+    };
+    return String(numStr).split('').map(char => superscripts[char] || char).join('');
 }
 
 // ==========================================
@@ -43,12 +73,13 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x0d1117, 0.005);
 
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(0, 0, 200);
+// Adjusted initial camera angle and distance
+camera.position.set(45, 10, 105);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.autoClear = false; // Needed to support HUD overlay
+renderer.autoClear = false;
 container.appendChild(renderer.domElement);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -77,23 +108,34 @@ boxLine.material.transparent = true;
 boxLine.material.opacity = 0.8;
 scene.add(boxLine);
 
-// Particle Geometries and Materials
+// Opaque Volume for q > 1
+const opaqueVolumeGeo = new THREE.BoxGeometry(BOUNDING_BOX * 1.1, BOUNDING_BOX * 1.1, BOUNDING_BOX * 1.1);
+const opaqueVolumeMat = new THREE.MeshStandardMaterial({
+    color: 0x388bfd,
+    transparent: true,
+    opacity: 0.12,
+    roughness: 0.1,
+    side: THREE.BackSide
+});
+const opaqueVolumeMesh = new THREE.Mesh(opaqueVolumeGeo, opaqueVolumeMat);
+opaqueVolumeMesh.visible = false;
+scene.add(opaqueVolumeMesh);
+
+// Particle Geometries and Materials (Toned down brightness)
 const SPHERE_RADIUS = 5;
 const sphereGeo = new THREE.SphereGeometry(SPHERE_RADIUS, 32, 32);
 const sphereMat = new THREE.MeshStandardMaterial({
-    color: 0x79c0ff,
-    roughness: 0.15,
-    metalness: 0.4,
-    emissive: 0x1f447a,
-    emissiveIntensity: 0.8
+    color: 0x58a6ff,
+    roughness: 0.35,
+    metalness: 0.2,
+    emissive: 0x0d2847,
+    emissiveIntensity: 0.25
 });
 
-// Custom Thick Arrow Generator
 function createThickArrow() {
     const group = new THREE.Group();
     const mat = new THREE.MeshStandardMaterial({ color: 0x2ea043, roughness: 0.3, metalness: 0.5 });
 
-    // Shaft centered at origin so the MNP acts as a pivot
     const shaftLength = 18;
     const shaftGeo = new THREE.CylinderGeometry(0.6, 0.6, shaftLength, 16);
     const shaft = new THREE.Mesh(shaftGeo, mat);
@@ -120,7 +162,7 @@ const qmTex = new THREE.CanvasTexture(qmCanvas);
 const qmMat = new THREE.SpriteMaterial({ map: qmTex, transparent: true });
 const qmSprite = new THREE.Sprite(qmMat);
 qmSprite.scale.set(80, 20, 1);
-qmSprite.position.set(0, 20, 0);
+qmSprite.position.set(0, 25, 0);
 qmSprite.visible = false;
 scene.add(qmSprite);
 
@@ -134,15 +176,16 @@ function updateQmSprite() {
     qmCtx.fillText('?', 512, 70);
 
     qmCtx.fillStyle = '#c9d1d9';
-    qmCtx.font = 'bold 34px "Segoe UI", sans-serif';
-    const text = currentLang === 'en' ? 'Unknown Spatial Configuration' : 'Configuração Espacial Desconhecida';
-    qmCtx.fillText(text, 512, 170);
+    qmCtx.font = 'bold 32px "Segoe UI", sans-serif';
+    qmCtx.fillText('Unknown Spatial Configuration', 512, 170);
 
     qmTex.needsUpdate = true;
 }
 updateQmSprite();
 
-// HUD Overlay Scene for Video Recording
+// ==========================================
+// HUD OVERLAY SCENE & DRAGGABLE PHYSICS CARD
+// ==========================================
 const hudScene = new THREE.Scene();
 const hudCamera = new THREE.OrthographicCamera(
     -container.clientWidth / 2, container.clientWidth / 2,
@@ -151,55 +194,190 @@ const hudCamera = new THREE.OrthographicCamera(
 );
 hudCamera.position.z = 5;
 
+const HUD_WIDTH = 300;
+const HUD_HEIGHT = 180;
+
 const hudCanvas = document.createElement('canvas');
-hudCanvas.width = 240;
-hudCanvas.height = 70;
+hudCanvas.width = HUD_WIDTH;
+hudCanvas.height = HUD_HEIGHT;
 const hudCtx = hudCanvas.getContext('2d');
 const hudTex = new THREE.CanvasTexture(hudCanvas);
 const hudMat = new THREE.SpriteMaterial({ map: hudTex, transparent: true });
 const hudSprite = new THREE.Sprite(hudMat);
-hudSprite.scale.set(240, 70, 1);
-hudSprite.position.set(-container.clientWidth / 2 + 140, container.clientHeight / 2 - 50, 0);
+hudSprite.scale.set(HUD_WIDTH, HUD_HEIGHT, 1);
+
+// Initial position: Top-left corner
+hudSprite.position.set(
+    -container.clientWidth / 2 + HUD_WIDTH / 2 + 20,
+    container.clientHeight / 2 - HUD_HEIGHT / 2 - 20,
+    0
+);
 hudScene.add(hudSprite);
 
-function updateHUD(qVal) {
-    hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
+function updateHUD(qVal, tVal, tCutoff, tauText) {
+    hudCtx.clearRect(0, 0, HUD_WIDTH, HUD_HEIGHT);
 
-    hudCtx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+    // Draw background card with rounded corners
+    hudCtx.fillStyle = 'rgba(13, 17, 23, 0.90)';
     hudCtx.beginPath();
-    if (hudCtx.roundRect) hudCtx.roundRect(0, 0, 240, 70, 10);
-    else hudCtx.rect(0, 0, 240, 70);
+    if (hudCtx.roundRect) hudCtx.roundRect(0, 0, HUD_WIDTH, HUD_HEIGHT, 10);
+    else hudCtx.rect(0, 0, HUD_WIDTH, HUD_HEIGHT);
     hudCtx.fill();
     hudCtx.strokeStyle = '#58a6ff';
     hudCtx.lineWidth = 3;
     hudCtx.stroke();
 
+    // Drag handle bar
+    hudCtx.fillStyle = '#30363d';
+    hudCtx.fillRect(120, 8, 60, 4);
+
+    hudCtx.textAlign = 'left';
+    hudCtx.textBaseline = 'top';
+
+    // Variable: q
+    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
     hudCtx.fillStyle = '#ffffff';
-    hudCtx.font = 'bold 32px "Segoe UI", sans-serif';
-    hudCtx.textAlign = 'center';
-    hudCtx.textBaseline = 'middle';
-    hudCtx.fillText(`q = ${qVal.toFixed(2)}`, 120, 35);
+    hudCtx.fillText('q', 20, 25);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${qVal.toFixed(2)}`, 35, 25);
+
+    // Variable: T
+    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
+    hudCtx.fillText('T', 20, 60);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${tVal} K`, 38, 60);
+
+    // Variable: T_cutoff
+    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
+    hudCtx.fillText('T', 20, 95);
+    hudCtx.font = '13px "Segoe UI", sans-serif';
+    hudCtx.fillText('cutoff', 34, 105);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${tCutoff.toFixed(1)} K`, 72, 95);
+
+    // Variable: tau
+    hudCtx.font = 'bold 22px "Times New Roman", serif';
+    hudCtx.fillStyle = '#58a6ff';
+    hudCtx.fillText('τ', 20, 130);
+    hudCtx.font = '20px "Segoe UI", sans-serif';
+    hudCtx.fillText(` = ${tauText}`, 38, 130);
 
     hudTex.needsUpdate = true;
 }
 
 // ==========================================
+// HUD WATERMARK WITH LAVINA BRANDING & LOGO
+// ==========================================
+const WM_WIDTH = 340;
+const WM_HEIGHT = 90;
+
+const wmCanvas = document.createElement('canvas');
+wmCanvas.width = WM_WIDTH;
+wmCanvas.height = WM_HEIGHT;
+const wmCtx = wmCanvas.getContext('2d');
+
+const wmTex = new THREE.CanvasTexture(wmCanvas);
+const wmMat = new THREE.SpriteMaterial({ map: wmTex, transparent: true, opacity: 0.95 });
+const wmSprite = new THREE.Sprite(wmMat);
+wmSprite.scale.set(WM_WIDTH, WM_HEIGHT, 1);
+
+wmSprite.position.set(container.clientWidth / 2 - WM_WIDTH / 2 - 15, container.clientHeight / 2 - WM_HEIGHT / 2 - 15, 0);
+hudScene.add(wmSprite);
+
+const logoImg = new Image();
+logoImg.src = 'logo-lavina-nome.jpg';
+
+function drawWatermark() {
+    wmCtx.clearRect(0, 0, WM_WIDTH, WM_HEIGHT);
+
+    if (logoImg.complete && logoImg.naturalWidth !== 0) {
+        wmCtx.drawImage(logoImg, WM_WIDTH - 330, 10, 70, 70);
+    }
+
+    wmCtx.textAlign = 'right';
+    wmCtx.textBaseline = 'top';
+
+    wmCtx.fillStyle = '#ffffff';
+    wmCtx.font = '800 32px "Segoe UI", sans-serif';
+    wmCtx.fillText('LAVINA', WM_WIDTH - 10, 12);
+
+    wmCtx.fillStyle = '#58a6ff';
+    wmCtx.font = '700 14px "Segoe UI", sans-serif';
+    wmCtx.fillText('IFGW • UNICAMP', WM_WIDTH - 10, 52);
+
+    wmTex.needsUpdate = true;
+}
+
+drawWatermark();
+logoImg.onload = () => {
+    drawWatermark();
+};
+
+// ==========================================
+// MOUSE DRAG HANDLERS FOR HUD CARD
+// ==========================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let isDraggingHUD = false;
+const dragOffset = new THREE.Vector3();
+
+function getCanvasHUDCoords(e) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const hudX = x - container.clientWidth / 2;
+    const hudY = -(y - container.clientHeight / 2);
+    return new THREE.Vector3(hudX, hudY, 0);
+}
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, hudCamera);
+    const intersects = raycaster.intersectObject(hudSprite);
+
+    if (intersects.length > 0) {
+        isDraggingHUD = true;
+        controls.enabled = false;
+        const clickWorldPos = getCanvasHUDCoords(e);
+        dragOffset.subVectors(hudSprite.position, clickWorldPos);
+    }
+});
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!isDraggingHUD) return;
+
+    const mouseHUDPos = getCanvasHUDCoords(e);
+    const newPos = mouseHUDPos.add(dragOffset);
+
+    const minX = -container.clientWidth / 2 + HUD_WIDTH / 2;
+    const maxX = container.clientWidth / 2 - HUD_WIDTH / 2;
+    const minY = -container.clientHeight / 2 + HUD_HEIGHT / 2;
+    const maxY = container.clientHeight / 2 - HUD_HEIGHT / 2;
+
+    hudSprite.position.x = Math.max(minX, Math.min(maxX, newPos.x));
+    hudSprite.position.y = Math.max(minY, Math.min(maxY, newPos.y));
+});
+
+window.addEventListener('pointerup', () => {
+    if (isDraggingHUD) {
+        isDraggingHUD = false;
+        controls.enabled = true;
+    }
+});
+
+// ==========================================
 // FLIP AND ROTATION LOGIC
 // ==========================================
-const FLIP_SPEED = 0.4; // Reversal time (tau_rev)
+const FLIP_SPEED = 0.4;
 
 function updateParticleState(p) {
-    // Check if a new Néel flip should be triggered
     if (currentTau !== Infinity && currentTau > 0) {
-        // Visual flip probabilities mapped directly to q so differences are perceptible
-        let flipProbability = 0;
-        if (currentQ >= 1.3) flipProbability = 0.25;        // Frantic (Super-diffusive)
-        else if (currentQ >= 1.2) flipProbability = 0.15;
-        else if (currentQ >= 1.1) flipProbability = 0.10;
-        else if (currentQ >= 1.0) flipProbability = 0.05;   // Fast (Néel-Brown)
-        else if (currentQ >= 0.9) flipProbability = 0.015;  // Slower (Sub-diffusive)
-        else if (currentQ >= 0.8) flipProbability = 0.003;  // Very slow
-        else if (currentQ >= 0.7) flipProbability = 0.0001; // Spin-Glass (almost frozen)
+        const logTau = Math.log10(currentTau);
+        const flipProbability = Math.max(0.0002, Math.min(0.25, 0.20 - (logTau + 11) * 0.014));
 
         if (!p.isFlipping && Math.random() < flipProbability) {
             p.isFlipping = true;
@@ -213,7 +391,6 @@ function updateParticleState(p) {
         }
     }
 
-    // Animate continuous 3D rotation if currently flipping
     if (p.isFlipping) {
         const angleToTarget = p.currentDir.angleTo(p.targetDir);
 
@@ -256,7 +433,6 @@ function generateParticle() {
             attempts++;
         }
     }
-    // The first particle stays at the center (0, 0, 0)
 
     const mesh = new THREE.Mesh(sphereGeo, sphereMat);
     mesh.position.set(px, py, pz);
@@ -297,78 +473,96 @@ function removeParticles(amountToRemove) {
 // ==========================================
 // PHYSICS & UI UPDATE
 // ==========================================
-function updatePhysics(q) {
-    let T_star = 0;
+function updatePhysics(q, tVal) {
+    let T_star = calculateTStar(q, tVal);
 
-    // T_star values adjusted to ensure tau scales monotonically
-    if (q === 1.3) T_star = 80.0;
-    if (q === 1.2) T_star = 60.0;
-    if (q === 1.1) T_star = 40.0;
-    if (q === 1.0) T_star = 0;
-    if (q === 0.9) T_star = 25.0;
-    if (q === 0.8) T_star = 100.0;
-    if (q === 0.7) T_star = 20.0;
+    
 
     currentQ = q;
-    const T_cutoff = calculateTCutoff(q, T);
+    currentT = tVal;
+    const T_cutoff = calculateTCutoff(q, currentT);
     let tau = 0;
     let eqText = "";
 
-    updateHUD(q);
-
     if (q === 1.0) {
-        tau = TAU_0 * Math.exp(DELTA_V_KB / T);
+        tau = TAU_0 * Math.exp(DELTA_V_KB / currentT);
         eqText = "$$\\tau = \\tau_0 \\exp\\left(\\frac{\\Delta V}{k_B T}\\right)$$";
     } else if (q < 1.0) {
-        if (T <= T_cutoff) {
+        if (currentT <= T_cutoff) {
             tau = Infinity;
         } else {
-            const base = (T + T_star) / (T - T_cutoff);
+            const base = (currentT + T_star) / (currentT - T_cutoff);
             const exponent = (3 - q) / (2 * (1 - q));
             tau = TAU_0 * Math.pow(base, exponent);
         }
-        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T + T^*}{T - T_{cut-off}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
+        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T + T^*}{T - T_{cutoff}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
     } else if (q > 1.0) {
-        const base = (T - T_star) / (T + T_cutoff);
+        const base = (currentT - T_star) / (currentT + T_cutoff);
         if (base <= 0) {
             tau = 0;
         } else {
             const exponent = (3 - q) / (2 * (1 - q));
             tau = TAU_0 * Math.pow(base, exponent);
         }
-        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T - T^*}{T + T_{cut-off}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
+        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T - T^*}{T + T_{cutoff}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
     }
 
     currentTau = tau;
 
-    let tauDisplay = "";
+    let tauText = "";
+
     if (tau === Infinity) {
-        tauDisplay = "∞";
+        tauText = "∞ (Frozen)";
     } else if (tau === 0) {
-        tauDisplay = "0 s";
+        tauText = "0 s";
+    } else if (tau < 1e-12) {
+        tauText = (tau * 1e15).toFixed(2) + " fs";
+    } else if (tau < 1e-9) {
+        tauText = (tau * 1e12).toFixed(2) + " ps";
+    } else if (tau < 1e-6) {
+        tauText = (tau * 1e9).toFixed(2) + " ns";
+    } else if (tau < 1e-3) {
+        tauText = (tau * 1e6).toFixed(2) + " µs";
+    } else if (tau < 1) {
+        tauText = (tau * 1e3).toFixed(2) + " ms";
     } else {
-        const [baseStr, exponentStr] = tau.toExponential(2).split('e');
-        tauDisplay = `${baseStr} &times; 10<sup>${parseInt(exponentStr)}</sup> s`;
+        tauText = tau.toFixed(2) + " s";
     }
 
-    document.getElementById('qLabel').innerText = q.toFixed(2);
-    document.getElementById('tauLabel').innerHTML = tauDisplay;
-    document.getElementById('tCutoffLabel').innerText = T_cutoff.toFixed(1) + " K";
+    // Direct DOM Updates for Sidebar Panel
+    const qLabelEl = document.getElementById('qLabel');
+    const tauLabelEl = document.getElementById('tauLabel');
+    const tLabelEl = document.getElementById('tLabel');
+    const tCutoffLabelEl = document.getElementById('tCutoffLabel');
+    const eqDiv = document.getElementById('equationDisplay'); // Add equation div
 
-    const eqDiv = document.getElementById('equationDisplay');
-    eqDiv.innerHTML = eqText;
-    if (window.MathJax) {
-        MathJax.typesetPromise([eqDiv]);
+    if (qLabelEl) qLabelEl.innerText = q.toFixed(2);
+    if (tauLabelEl) tauLabelEl.innerText = tauText;
+    if (tLabelEl) tLabelEl.innerText = `${tVal} K`;
+    if (tCutoffLabelEl) tCutoffLabelEl.innerText = T_cutoff.toFixed(1) + " K";
+    
+    // Inject the equation text and re-render MathJax
+    if (eqDiv && eqText !== "") {
+        eqDiv.innerHTML = eqText;
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise([eqDiv]).catch((err) => console.error(err.message));
+        }
     }
+
+    // Update Floating Canvas HUD Card
+    updateHUD(q, currentT, T_cutoff, tauText);
 }
 
 // Select Change Event
 const estadosSelect = document.getElementById('estadosSelect');
+const tempSlider = document.getElementById('tempSlider');
+const tempLockNote = document.getElementById('tempLockNote');
+
 estadosSelect.addEventListener('change', function () {
     document.getElementById("opt0").disabled = true;
     const qVal = parseFloat(estadosSelect.value);
 
-    let numBolas = 1; // Default to 1 for q >= 1.0
+    let numBolas = 1;
     if (qVal === 0.9) numBolas = 5;
     if (qVal === 0.8) numBolas = 9;
     if (qVal === 0.7) numBolas = 13;
@@ -382,10 +576,28 @@ estadosSelect.addEventListener('change', function () {
         removeParticles(PARTICLES.length - numBolas);
     }
 
-    // Show unknown configuration sprite for q > 1
-    qmSprite.visible = qVal > 1.0;
+    if (qVal <= 1.0) {
+        tempSlider.disabled = false;
+        tempLockNote.style.display = 'none';
+    } else {
+        tempSlider.disabled = true;
+        currentT = 150;
+        tempSlider.value = 150;
+        document.getElementById('tSliderVal').innerText = 150;
+        tempLockNote.style.display = 'block';
+    }
 
-    updatePhysics(qVal);
+    qmSprite.visible = qVal > 1.0;
+    opaqueVolumeMesh.visible = qVal > 1.0;
+
+    updatePhysics(qVal, currentT);
+});
+
+// Temperature Slider Listener
+tempSlider.addEventListener('input', (e) => {
+    currentT = parseInt(e.target.value, 10);
+    document.getElementById('tSliderVal').innerText = currentT;
+    if (currentQ > 0) updatePhysics(currentQ, currentT);
 });
 
 // Accordion Interaction
@@ -403,7 +615,6 @@ infoToggleBtn.addEventListener('click', function () {
     }
 });
 
-// Window Resizing
 window.addEventListener('resize', () => {
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -411,13 +622,13 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
 
-    // Update HUD positioning
     hudCamera.left = -width / 2;
     hudCamera.right = width / 2;
     hudCamera.top = height / 2;
     hudCamera.bottom = -height / 2;
     hudCamera.updateProjectionMatrix();
-    hudSprite.position.set(-width / 2 + 140, height / 2 - 50, 0);
+
+    wmSprite.position.set(width / 2 - WM_WIDTH / 2 - 15, height / 2 - WM_HEIGHT / 2 - 15, 0);
 });
 
 // ==========================================
@@ -431,11 +642,8 @@ let recordTimerInterval;
 let currentBlobUrl = null;
 
 recordBtn.addEventListener('click', () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        return; // Already recording
-    }
+    if (mediaRecorder && mediaRecorder.state === 'recording') return;
 
-    // Free the previous blob URL, if any
     if (currentBlobUrl) {
         URL.revokeObjectURL(currentBlobUrl);
         currentBlobUrl = null;
@@ -443,11 +651,8 @@ recordBtn.addEventListener('click', () => {
 
     const durationSec = parseInt(recordDuration.value, 10) || 5;
     const durationMs = durationSec * 1000;
-
-    // Capture at 30 FPS
     const stream = renderer.domElement.captureStream(30);
 
-    // Prefer MP4 (H.264), fall back to WebM
     let options = { mimeType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"' };
     let extension = 'mp4';
 
@@ -466,9 +671,7 @@ recordBtn.addEventListener('click', () => {
     recordedChunks = [];
 
     mediaRecorder.ondataavailable = function (e) {
-        if (e.data.size > 0) {
-            recordedChunks.push(e.data);
-        }
+        if (e.data.size > 0) recordedChunks.push(e.data);
     };
 
     mediaRecorder.onstop = function () {
@@ -487,173 +690,94 @@ recordBtn.addEventListener('click', () => {
         a.download = finalFilename;
         document.body.appendChild(a);
         a.click();
-
-        // Open in a new tab for immediate viewing
         window.open(url, '_blank');
 
-        setTimeout(() => {
-            document.body.removeChild(a);
-            // The blob URL is not revoked here so the new tab has time to load it
-        }, 100);
+        setTimeout(() => document.body.removeChild(a), 100);
 
-        // Reset UI
-        recordBtn.innerText = currentLang === 'en' ? 'Record' : 'Gravar';
+        recordBtn.innerText = 'Record';
         recordBtn.classList.remove('recording');
         recordBtn.disabled = false;
     };
 
     mediaRecorder.start();
 
-    // Update UI to recording state with timer
     let elapsedSeconds = 0;
     recordBtn.classList.add('recording');
     recordBtn.disabled = true;
 
     const updateTimerText = () => {
-        recordBtn.innerText = currentLang === 'en'
-            ? `Recording... (${elapsedSeconds}s / ${durationSec}s)`
-            : `Gravando... (${elapsedSeconds}s / ${durationSec}s)`;
+        recordBtn.innerText = `Recording... (${elapsedSeconds}s / ${durationSec}s)`;
     };
 
     updateTimerText();
     recordTimerInterval = setInterval(() => {
         elapsedSeconds++;
-        if (elapsedSeconds <= durationSec) {
-            updateTimerText();
-        }
+        if (elapsedSeconds <= durationSec) updateTimerText();
     }, 1000);
 
-    // Stop recording after the desired time
     setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-        }
+        if (mediaRecorder.state === 'recording') mediaRecorder.stop();
     }, durationMs);
 });
 
 // ==========================================
-// LANGUAGE TRANSLATIONS
+// DEFAULT RESET ON PAGE LOAD / REFRESH
 // ==========================================
-const translations = {
-    en: {
-        langBtn: "Language: English",
-        mainTitle: "Relaxation Time of Magnetic Nanoparticles (3D)",
-        opt0: "Select a State",
-        opt1: "q = 1.3 (Super-diffusive)",
-        opt2: "q = 1.2 (Super-diffusive)",
-        optX: "q = 1.1 (Super-diffusive)",
-        opt3: "q = 1.0 (Néel-Brown)",
-        opt4: "q = 0.9 (Sub-diffusive)",
-        opt5: "q = 0.8 (Sub-diffusive)",
-        opt6: "q = 0.7 (Spin-Glass)",
-        eqHeading: "Equation being used:",
-        eqPlaceholder: "Select a State",
-        tLabel: "T = 150 K",
-        infoBtnText: "Simulation Info",
-        infoTitle: "About the 3D Simulation",
-        info1: "<strong>Particles:</strong> Magnetic nanoparticles (MNPs) with dipolar interactions.",
-        info2: "<strong>Arrows:</strong> Magnetic dipole moments oriented in 3D.",
-        info3: "<strong>180&deg; Flips:</strong> Stochastic Néel relaxation influenced by relaxation time \\(\\tau\\).",
-        glossaryTitle: "Variables",
-        info5: "<strong>\\(q\\):</strong> Entropic index (interaction strength).",
-        info6: "<strong>\\(\\tau\\):</strong> Relaxation time (average wait between flips).",
-        info7: "<strong>\\(T\\):</strong> Environmental temperature (fixed at 150 K).",
-        info8: "<strong>\\(T_{cut-off}\\):</strong> Critical freezing threshold.",
-        recordHeading: "Record Video:",
-        recordFilenamePlaceholder: "Filename (optional)",
-        recordSecLabel: "sec",
-        recordBtn: "Record",
-        recordingTxt: "Recording...",
-        recordNote: "Note: Saved format (MP4 or WebM) depends on your browser. If saved as WebM and it won't open, drag the file into your browser to play it."
-    },
-    pt: {
-        langBtn: "Idioma: Português",
-        mainTitle: "Tempo de Relaxação de Nanopartículas Magnéticas (3D)",
-        opt0: "Selecione um Estado",
-        opt1: "q = 1.3 (Super-difusivo)",
-        opt2: "q = 1.2 (Super-difusivo)",
-        optX: "q = 1.1 (Super-difusivo)",
-        opt3: "q = 1.0 (Néel-Brown)",
-        opt4: "q = 0.9 (Sub-difusivo)",
-        opt5: "q = 0.8 (Sub-difusivo)",
-        opt6: "q = 0.7 (Vidro de Spin)",
-        eqHeading: "Equação utilizada:",
-        eqPlaceholder: "Selecione um Estado",
-        tLabel: "T = 150 K",
-        infoBtnText: "Info da Simulação",
-        infoTitle: "Sobre a Simulação 3D",
-        info1: "<strong>Partículas:</strong> Nanopartículas magnéticas (MNPs) com interações dipolares.",
-        info2: "<strong>Setas:</strong> Momentos de dipolo magnético orientados em 3D.",
-        info3: "<strong>Giros de 180&deg;:</strong> Relaxação de Néel estocástica influenciada pelo tempo de relaxação \\(\\tau\\).",
-        glossaryTitle: "Variáveis",
-        info5: "<strong>\\(q\\):</strong> Índice entrópico (força de interação).",
-        info6: "<strong>\\(\\tau\\):</strong> Tempo de relaxação (tempo médio de espera entre giros).",
-        info7: "<strong>\\(T\\):</strong> Temperatura ambiente (fixada em 150 K).",
-        info8: "<strong>\\(T_{cut-off}\\):</strong> Limite de temperatura crítica de congelamento.",
-        recordHeading: "Gravar Vídeo:",
-        recordFilenamePlaceholder: "Nome do arquivo (opcional)",
-        recordSecLabel: "seg",
-        recordBtn: "Gravar",
-        recordingTxt: "Gravando...",
-        recordNote: "Nota: O formato salvo (MP4 ou WebM) depende do suporte do seu navegador. Se for salvo em WebM e não abrir, arraste o arquivo para o seu navegador para assisti-lo."
+function resetToDefaults() {
+    currentT = 150;
+    currentTau = Infinity;
+    currentQ = 1.0;
+
+    // Reset camera position to new isometric view
+    camera.position.set(45, 10, 105);
+    controls.reset();
+
+    if (estadosSelect) {
+        estadosSelect.value = "0";
+        document.getElementById("opt0").disabled = false;
     }
+
+    if (tempSlider) {
+        tempSlider.value = 150;
+        tempSlider.disabled = true;
+    }
+
+    const tSliderVal = document.getElementById('tSliderVal');
+    if (tSliderVal) tSliderVal.innerText = 150;
+
+    const tempLockNote = document.getElementById('tempLockNote');
+    if (tempLockNote) {
+        tempLockNote.style.display = 'block';
+        tempLockNote.innerText = 'Select a q parameter to enable temperature adjustments';
+    }
+
+    if (PARTICLES.length > 0) {
+        removeParticles(PARTICLES.length);
+    }
+    generateParticle();
+
+    if (typeof qmSprite !== 'undefined') qmSprite.visible = false;
+    if (typeof opaqueVolumeMesh !== 'undefined') opaqueVolumeMesh.visible = false;
+
+    const qLabel = document.getElementById('qLabel');
+    const tauLabel = document.getElementById('tauLabel');
+    const tLabel = document.getElementById('tLabel');
+    const tCutoffLabel = document.getElementById('tCutoffLabel');
+    const eqDiv = document.getElementById('equationDisplay');
+
+    if (qLabel) qLabel.innerText = "1.00";
+    if (tauLabel) tauLabel.innerText = "0.00 s";
+    if (tLabel) tLabel.innerText = "150 K";
+    if (tCutoffLabel) tCutoffLabel.innerText = "0.0 K";
+    if (eqDiv) eqDiv.innerHTML = '<span id="eqPlaceholder">Select q-parameter</span>';
+
+    updateHUD(1.0, 150, 0, "Select q");
+}
+
+document.addEventListener('DOMContentLoaded', resetToDefaults);
+window.onbeforeunload = () => {
+    resetToDefaults();
 };
-
-const langToggleBtn = document.getElementById('langToggleBtn');
-
-langToggleBtn.addEventListener('click', function () {
-    currentLang = currentLang === 'en' ? 'pt' : 'en';
-    const t = translations[currentLang];
-    langToggleBtn.innerText = t.langBtn;
-
-    document.getElementById('tLabel').innerText = t.tLabel;
-    document.getElementById('glossaryTitle').innerText = t.glossaryTitle;
-
-    document.getElementById('info5').innerHTML = t.info5;
-    document.getElementById('info6').innerHTML = t.info6;
-    document.getElementById('info7').innerHTML = t.info7;
-    document.getElementById('info8').innerHTML = t.info8;
-    document.getElementById('mainTitle').innerText = t.mainTitle;
-    document.getElementById('opt0').innerText = t.opt0;
-    document.getElementById('opt1').innerText = t.opt1;
-    document.getElementById('opt2').innerText = t.opt2;
-    document.getElementById('optX').innerText = t.optX;
-    document.getElementById('opt3').innerText = t.opt3;
-    document.getElementById('opt4').innerText = t.opt4;
-    document.getElementById('opt5').innerText = t.opt5;
-    document.getElementById('opt6').innerText = t.opt6;
-    document.getElementById('eqHeading').innerText = t.eqHeading;
-    document.getElementById('infoTitle').innerText = t.infoTitle;
-
-    document.getElementById('recordHeading').innerText = t.recordHeading;
-    document.getElementById('recordFilename').placeholder = t.recordFilenamePlaceholder;
-    document.getElementById('recordSecLabel').innerText = t.recordSecLabel;
-    document.getElementById('recordNote').innerText = t.recordNote;
-
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        // The interval tick will overwrite this, but update immediately
-        document.getElementById('recordBtn').innerText = t.recordingTxt;
-    } else {
-        document.getElementById('recordBtn').innerText = t.recordBtn;
-    }
-
-    const placeholderEl = document.getElementById('eqPlaceholder');
-    if (placeholderEl) {
-        placeholderEl.innerText = t.eqPlaceholder;
-    }
-
-    document.getElementById('infoToggleText').innerText = t.infoBtnText;
-
-    document.getElementById('info1').innerHTML = t.info1;
-    document.getElementById('info2').innerHTML = t.info2;
-    document.getElementById('info3').innerHTML = t.info3;
-
-    updateQmSprite();
-
-    if (window.MathJax) {
-        MathJax.typesetPromise([document.getElementById('infoBox')]);
-    }
-});
 
 // ==========================================
 // ANIMATION LOOP
@@ -670,7 +794,6 @@ function animate() {
 
     controls.update();
 
-    // Render main scene, then HUD on top
     renderer.clear();
     renderer.render(scene, camera);
     renderer.clearDepth();

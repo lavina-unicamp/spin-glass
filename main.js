@@ -33,6 +33,16 @@ function calculateTCutoff(q, tVal) {
     return 0;
 }
 
+// Helper to convert exponent integers into unicode superscripts for Canvas HUD
+function toSuperscript(numStr) {
+    const superscripts = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        '-': '⁻', '+': '⁺'
+    };
+    return String(numStr).split('').map(char => superscripts[char] || char).join('');
+}
+
 // ==========================================
 // THREE.JS 3D SCENE SETUP
 // ==========================================
@@ -215,13 +225,13 @@ function updateHUD(qVal, tVal, tCutoff, tauText) {
     hudCtx.font = '20px "Segoe UI", sans-serif';
     hudCtx.fillText(` = ${tVal} K`, 38, 60);
 
-    // Variable: T_cut-off
+    // Variable: T_cutoff
     hudCtx.font = 'italic bold 20px "Times New Roman", serif';
     hudCtx.fillText('T', 20, 95);
     hudCtx.font = '13px "Segoe UI", sans-serif';
-    hudCtx.fillText('cut-off', 34, 105);
+    hudCtx.fillText('cutoff', 34, 105);
     hudCtx.font = '20px "Segoe UI", sans-serif';
-    hudCtx.fillText(` = ${tCutoff.toFixed(1)} K`, 75, 95);
+    hudCtx.fillText(` = ${tCutoff.toFixed(1)} K`, 72, 95);
 
     // Variable: tau
     hudCtx.font = 'bold 22px "Times New Roman", serif';
@@ -475,7 +485,7 @@ function updatePhysics(q, tVal) {
             const exponent = (3 - q) / (2 * (1 - q));
             tau = TAU_0 * Math.pow(base, exponent);
         }
-        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T + T^*}{T - T_{cut-off}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
+        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T + T^*}{T - T_{cutoff}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
     } else if (q > 1.0) {
         const base = (currentT - T_star) / (currentT + T_cutoff);
         if (base <= 0) {
@@ -484,7 +494,7 @@ function updatePhysics(q, tVal) {
             const exponent = (3 - q) / (2 * (1 - q));
             tau = TAU_0 * Math.pow(base, exponent);
         }
-        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T - T^*}{T + T_{cut-off}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
+        eqText = "$$\\tau = \\tau_0 \\left( \\frac{T - T^*}{T + T_{cutoff}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
     }
 
     currentTau = tau;
@@ -499,14 +509,13 @@ function updatePhysics(q, tVal) {
         tauHTMLDisplay = "0 s";
         plainTauText = "0 s";
     } else {
-    const [baseStr, exponentStr] = tau.toExponential(2).split('e');
-    const expVal = parseInt(exponentStr, 10);
-    // LaTeX scientific format: base × 10^{exp} s
-    plainTauText = `${baseStr} × 10^{${expVal}} s`;
-}
+        const [baseStr, exponentStr] = tau.toExponential(2).split('e');
+        const expVal = parseInt(exponentStr, 10);
+        tauHTMLDisplay = `${baseStr} &times; 10<sup>${expVal}</sup> s`;
+        plainTauText = `${baseStr} × 10${toSuperscript(expVal)} s`;
+    }
 
-    updateHUD(q, currentT, T_cutoff, plainTauText);
-
+    // Direct DOM Updates for Sidebar Panel
     const qLabelEl = document.getElementById('qLabel');
     const tauLabelEl = document.getElementById('tauLabel');
     const tLabelEl = document.getElementById('tLabel');
@@ -520,11 +529,12 @@ function updatePhysics(q, tVal) {
     const eqDiv = document.getElementById('equationDisplay');
     if (eqDiv) {
         eqDiv.innerHTML = eqText;
-        if (window.MathJax) {
+        if (window.MathJax && window.MathJax.typesetPromise) {
             MathJax.typesetPromise([eqDiv]);
         }
     }
 
+    // Update Floating Canvas HUD Card
     updateHUD(q, currentT, T_cutoff, plainTauText);
 }
 
@@ -699,7 +709,6 @@ recordBtn.addEventListener('click', () => {
 // DEFAULT RESET ON PAGE LOAD / REFRESH
 // ==========================================
 function resetToDefaults() {
-    updateHUD(1.0, 150, 0, "Select q");
     currentT = 150;
     currentTau = Infinity;
     currentQ = 1.0;

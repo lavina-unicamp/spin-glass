@@ -14,6 +14,27 @@ const T_CUTOFF_CURVES = {
     0.9: [{ T: 50,  Tc: 46 },  { T: 100, Tc: 40 }, { T: 150, Tc: 34 }, { T: 200, Tc: 31 }, { T: 250, Tc: 29 }]
 };
 
+const T_STAR_CURVES = {
+    0.7: [{ T: 50, Ts: 10 }, { T: 100, Ts: 18 }, { T: 150, Ts: 32 }, { T: 200, Ts: 40 }, { T: 250, Ts: 47 }],
+    0.8: [{ T: 75, Ts: 12 }, { T: 100, Ts: 15 }, { T: 150, Ts: 25 }, { T: 200, Ts: 30 }, { T: 250, Ts: 36 }],
+    0.9: [{ T: 50, Ts: 4 },  { T: 100, Ts: 10 }, { T: 150, Ts: 15 }, { T: 200, Ts: 18 }, { T: 250, Ts: 21 }]
+};
+
+function calculateTStar(q, tVal) {
+    if (q >= 1.0 || !T_STAR_CURVES[q]) return 0;
+    const curve = T_STAR_CURVES[q];
+    if (tVal <= curve[0].T) return curve[0].Ts;
+    if (tVal >= curve[curve.length - 1].T) return curve[curve.length - 1].Ts;
+    for (let i = 0; i < curve.length - 1; i++) {
+        if (tVal >= curve[i].T && tVal <= curve[i + 1].T) {
+            const slope = (curve[i + 1].Ts - curve[i].Ts) / (curve[i + 1].T - curve[i].T);
+            return curve[i].Ts + slope * (tVal - curve[i].T);
+        }
+    }
+    return 0;
+}
+
+
 function calculateTCutoff(q, tVal) {
     if (q >= 1.0) return 0;
     const curve = T_CUTOFF_CURVES[q];
@@ -52,7 +73,8 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x0d1117, 0.005);
 
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(0, 0, 200);
+// Adjusted initial camera angle and distance
+camera.position.set(45, 10, 105);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
@@ -99,15 +121,15 @@ const opaqueVolumeMesh = new THREE.Mesh(opaqueVolumeGeo, opaqueVolumeMat);
 opaqueVolumeMesh.visible = false;
 scene.add(opaqueVolumeMesh);
 
-// Particle Geometries and Materials
+// Particle Geometries and Materials (Toned down brightness)
 const SPHERE_RADIUS = 5;
 const sphereGeo = new THREE.SphereGeometry(SPHERE_RADIUS, 32, 32);
 const sphereMat = new THREE.MeshStandardMaterial({
-    color: 0x79c0ff,
-    roughness: 0.15,
-    metalness: 0.4,
-    emissive: 0x1f447a,
-    emissiveIntensity: 0.8
+    color: 0x58a6ff,
+    roughness: 0.35,
+    metalness: 0.2,
+    emissive: 0x0d2847,
+    emissiveIntensity: 0.25
 });
 
 function createThickArrow() {
@@ -354,14 +376,8 @@ const FLIP_SPEED = 0.4;
 
 function updateParticleState(p) {
     if (currentTau !== Infinity && currentTau > 0) {
-        let flipProbability = 0;
-        if (currentQ >= 1.3) flipProbability = 0.25;
-        else if (currentQ >= 1.2) flipProbability = 0.15;
-        else if (currentQ >= 1.1) flipProbability = 0.10;
-        else if (currentQ >= 1.0) flipProbability = 0.05;
-        else if (currentQ >= 0.9) flipProbability = 0.015 * (currentT / 150);
-        else if (currentQ >= 0.8) flipProbability = 0.003 * (currentT / 150);
-        else if (currentQ >= 0.7) flipProbability = 0.0001 * (currentT / 150);
+        const logTau = Math.log10(currentTau);
+        const flipProbability = Math.max(0.0002, Math.min(0.25, 0.20 - (logTau + 11) * 0.014));
 
         if (!p.isFlipping && Math.random() < flipProbability) {
             p.isFlipping = true;
@@ -458,15 +474,9 @@ function removeParticles(amountToRemove) {
 // PHYSICS & UI UPDATE
 // ==========================================
 function updatePhysics(q, tVal) {
-    let T_star = 0;
+    let T_star = calculateTStar(q, tVal);
 
-    if (q === 1.3) T_star = 80.0;
-    if (q === 1.2) T_star = 60.0;
-    if (q === 1.1) T_star = 40.0;
-    if (q === 1.0) T_star = 0;
-    if (q === 0.9) T_star = 25.0;
-    if (q === 0.8) T_star = 100.0;
-    if (q === 0.7) T_star = 20.0;
+    
 
     currentQ = q;
     currentT = tVal;
@@ -509,10 +519,20 @@ function updatePhysics(q, tVal) {
         tauHTMLDisplay = "0 s";
         plainTauText = "0 s";
     } else {
-        const [baseStr, exponentStr] = tau.toExponential(2).split('e');
-        const expVal = parseInt(exponentStr, 10);
-        tauHTMLDisplay = `${baseStr} &times; 10<sup>${expVal}</sup> s`;
-        plainTauText = `${baseStr} × 10${toSuperscript(expVal)} s`;
+        if (tau < 1e-12) {
+            plainTauText = tauHTMLDisplay = (tau * 1e15).toFixed(2) + " fs";
+        } else if (tau < 1e-9) {
+            plainTauText = tauHTMLDisplay = (tau * 1e12).toFixed(2) + " ps";
+        } else if (tau < 1e-6) {
+            plainTauText = tauHTMLDisplay = (tau * 1e9).toFixed(2) + " ns";
+        } else if (tau < 1e-3) {
+            plainTauText = tauHTMLDisplay = (tau * 1e6).toFixed(2) + " µs";
+        } else if (tau < 1) {
+            plainTauText = tauHTMLDisplay = (tau * 1e3).toFixed(2) + " ms";
+        } else {
+            plainTauText = tauHTMLDisplay = tau.toFixed(2) + " s";
+        }
+    
     }
 
     // Direct DOM Updates for Sidebar Panel
@@ -712,6 +732,10 @@ function resetToDefaults() {
     currentT = 150;
     currentTau = Infinity;
     currentQ = 1.0;
+
+    // Reset camera position to new isometric view
+    camera.position.set(45, 10, 105);
+    controls.reset();
 
     if (estadosSelect) {
         estadosSelect.value = "0";

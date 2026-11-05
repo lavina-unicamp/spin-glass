@@ -363,20 +363,50 @@ select {
     pointer-events: none;
 }
 
-@media (max-width: 900px) {
+/* Mobile responsive layout & Touch optimizations */
+canvas {
+    touch-action: none; /* Prevents pull-to-refresh and page scrolling when dragging the HUD or rotating the camera */
+    outline: none;
+}
+
+/* Mobile vertical stack (Portrait only - Y is bigger than X) */
+@media (max-width: 900px) and (orientation: portrait) {
     body {
         flex-direction: column;
+        overflow-x: hidden;
     }
 
     #canvas-container {
         width: 100%;
-        height: 60vh;
+        height: 55vh;
+        order: 1;
     }
 
     #ui-layer {
         width: 100%;
-        height: 40vh;
+        height: 45vh;
         border-left: none;
         border-top: 2px solid #21262d;
+        order: 2;
     }
+
+    /* Make interactive elements easier to tap */
+    input[type="range"] { height: 30px; }
+    button, select, .accordion-btn { padding: 14px; font-size: 15px; }
+}
+
+/* Mobile side-by-side (Landscape only - X is bigger than Y) */
+@media (max-width: 900px) and (orientation: landscape) {
+    /* Slightly adjust the proportions so the control panel isn't too narrow on phone screens */
+    #canvas-container {
+        width: 65%; 
+    }
+
+    #ui-layer {
+        width: 35%;
+    }
+    
+    /* Make interactive elements easier to tap */
+    input[type="range"] { height: 30px; }
+    button, select, .accordion-btn { padding: 10px; font-size: 14px; }
 }

@@ -1,7 +1,7 @@
 // ==========================================
 // PHYSICS & SIMULATION CONSTANTS
 // ==========================================
-const DELTA_V_KB = 555;
+const DELTA_V_KB = 450;
 const TAU_0 = 1e-11;
 
 let currentT = 150;
@@ -11,20 +11,28 @@ let currentQ = 1.0;
 const T_CUTOFF_CURVES = {
     0.7: [{ T: 100, Tc: 104 }, { T: 125, Tc: 93 }, { T: 150, Tc: 90 }, { T: 175, Tc: 87 }, { T: 200, Tc: 84 }, { T: 250, Tc: 81 }],
     0.8: [{ T: 75,  Tc: 80 },  { T: 100, Tc: 74 }, { T: 125, Tc: 68 }, { T: 150, Tc: 64 }, { T: 200, Tc: 60 }, { T: 250, Tc: 57 }],
-    0.9: [{ T: 50,  Tc: 46 },  { T: 100, Tc: 40 }, { T: 150, Tc: 34 }, { T: 200, Tc: 31 }, { T: 250, Tc: 29 }]
+    0.9: [{ T: 50,  Tc: 46 },  { T: 100, Tc: 40 }, { T: 150, Tc: 34 }, { T: 200, Tc: 31 }, { T: 250, Tc: 29 }],
+    // Placeholder data for q > 1 (Update Tc values with exact numbers from your research)
+    1.1: [{ T: 50, Tc: 20 },   { T: 100, Tc: 18 }, { T: 150, Tc: 16 }, { T: 200, Tc: 14 }, { T: 250, Tc: 12 }],
+    1.3: [{ T: 50, Tc: 10 },   { T: 100, Tc: 8 },  { T: 150, Tc: 6 },  { T: 200, Tc: 4 },  { T: 250, Tc: 2 }]
 };
 
 const T_STAR_CURVES = {
     0.7: [{ T: 50, Ts: 10 }, { T: 100, Ts: 18 }, { T: 150, Ts: 32 }, { T: 200, Ts: 40 }, { T: 250, Ts: 47 }],
     0.8: [{ T: 75, Ts: 12 }, { T: 100, Ts: 15 }, { T: 150, Ts: 25 }, { T: 200, Ts: 30 }, { T: 250, Ts: 36 }],
-    0.9: [{ T: 50, Ts: 4 },  { T: 100, Ts: 10 }, { T: 150, Ts: 15 }, { T: 200, Ts: 18 }, { T: 250, Ts: 21 }]
+    0.9: [{ T: 50, Ts: 4 },  { T: 100, Ts: 10 }, { T: 150, Ts: 15 }, { T: 200, Ts: 18 }, { T: 250, Ts: 21 }],
+    // Placeholder data for q > 1 (Update Ts values with exact numbers from your research)
+    1.1: [{ T: 50, Ts: 8 },  { T: 100, Ts: 12 }, { T: 150, Ts: 18 }, { T: 200, Ts: 22 }, { T: 250, Ts: 26 }],
+    1.3: [{ T: 50, Ts: 15 }, { T: 100, Ts: 20 }, { T: 150, Ts: 28 }, { T: 200, Ts: 35 }, { T: 250, Ts: 42 }]
 };
 
 function calculateTStar(q, tVal) {
-    if (q >= 1.0 || !T_STAR_CURVES[q]) return 0;
+    if (q === 1.0 || !T_STAR_CURVES[q]) return 0;
     const curve = T_STAR_CURVES[q];
+    
     if (tVal <= curve[0].T) return curve[0].Ts;
     if (tVal >= curve[curve.length - 1].T) return curve[curve.length - 1].Ts;
+    
     for (let i = 0; i < curve.length - 1; i++) {
         if (tVal >= curve[i].T && tVal <= curve[i + 1].T) {
             const slope = (curve[i + 1].Ts - curve[i].Ts) / (curve[i + 1].T - curve[i].T);
@@ -34,11 +42,10 @@ function calculateTStar(q, tVal) {
     return 0;
 }
 
-
 function calculateTCutoff(q, tVal) {
-    if (q >= 1.0) return 0;
+    // Fixed: Now only returns 0 if q is exactly 1.0, or if curve data is missing
+    if (q === 1.0 || !T_CUTOFF_CURVES[q]) return 0;
     const curve = T_CUTOFF_CURVES[q];
-    if (!curve) return 0;
 
     if (tVal <= curve[0].T) return curve[0].Tc;
     if (tVal >= curve[curve.length - 1].T) return curve[curve.length - 1].Tc;
@@ -194,8 +201,9 @@ const hudCamera = new THREE.OrthographicCamera(
 );
 hudCamera.position.z = 5;
 
-const HUD_WIDTH = 300;
-const HUD_HEIGHT = 180;
+let HUD_WIDTH = 180;
+let HUD_HEIGHT = 180;
+let lastTauText = "Select q"; // Remembers the tau value during resizes
 
 const hudCanvas = document.createElement('canvas');
 hudCanvas.width = HUD_WIDTH;
@@ -217,50 +225,67 @@ hudScene.add(hudSprite);
 function updateHUD(qVal, tVal, tCutoff, tauText) {
     hudCtx.clearRect(0, 0, HUD_WIDTH, HUD_HEIGHT);
 
-    // Draw background card with rounded corners
+    // Calculate how much the box has scaled compared to the base 300x180 size
+    // Using Math.min ensures the text doesn't stretch weirdly if only one side is dragged
+    const scale = Math.min(HUD_WIDTH / 180, HUD_HEIGHT / 180);
+
+    // Draw background card (fills the full new width/height)
     hudCtx.fillStyle = 'rgba(13, 17, 23, 0.90)';
     hudCtx.beginPath();
     if (hudCtx.roundRect) hudCtx.roundRect(0, 0, HUD_WIDTH, HUD_HEIGHT, 10);
     else hudCtx.rect(0, 0, HUD_WIDTH, HUD_HEIGHT);
     hudCtx.fill();
     hudCtx.strokeStyle = '#58a6ff';
-    hudCtx.lineWidth = 3;
+    hudCtx.lineWidth = 3 * scale;
     hudCtx.stroke();
 
-    // Drag handle bar
+    // Center the top drag handle dynamically and scale its size
     hudCtx.fillStyle = '#30363d';
-    hudCtx.fillRect(120, 8, 60, 4);
+    hudCtx.fillRect((HUD_WIDTH / 2) - (30 * scale), 8 * scale, 60 * scale, 4 * scale);
 
     hudCtx.textAlign = 'left';
     hudCtx.textBaseline = 'top';
 
+    // Helper function to easily apply the scale to font sizes
+    const getFont = (size, family, style = '') => `${style} ${size * scale}px ${family}`.trim();
+
     // Variable: q
-    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
+    hudCtx.font = getFont(20, '"Times New Roman", serif', 'italic bold');
     hudCtx.fillStyle = '#ffffff';
-    hudCtx.fillText('q', 20, 25);
-    hudCtx.font = '20px "Segoe UI", sans-serif';
-    hudCtx.fillText(` = ${qVal.toFixed(2)}`, 35, 25);
+    hudCtx.fillText('q', 20 * scale, 25 * scale);
+    hudCtx.font = getFont(20, '"Segoe UI", sans-serif');
+    hudCtx.fillText(` = ${qVal.toFixed(2)}`, 35 * scale, 25 * scale);
 
     // Variable: T
-    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
-    hudCtx.fillText('T', 20, 60);
-    hudCtx.font = '20px "Segoe UI", sans-serif';
-    hudCtx.fillText(` = ${tVal} K`, 38, 60);
+    hudCtx.font = getFont(20, '"Times New Roman", serif', 'italic bold');
+    hudCtx.fillText('T', 20 * scale, 60 * scale);
+    hudCtx.font = getFont(20, '"Segoe UI", sans-serif');
+    hudCtx.fillText(` = ${tVal} K`, 38 * scale, 60 * scale);
 
     // Variable: T_cutoff
-    hudCtx.font = 'italic bold 20px "Times New Roman", serif';
-    hudCtx.fillText('T', 20, 95);
-    hudCtx.font = '13px "Segoe UI", sans-serif';
-    hudCtx.fillText('cutoff', 34, 105);
-    hudCtx.font = '20px "Segoe UI", sans-serif';
-    hudCtx.fillText(` = ${tCutoff.toFixed(1)} K`, 72, 95);
+    hudCtx.font = getFont(20, '"Times New Roman", serif', 'italic bold');
+    hudCtx.fillText('T', 20 * scale, 95 * scale);
+    hudCtx.font = getFont(13, '"Segoe UI", sans-serif');
+    hudCtx.fillText('cutoff', 34 * scale, 105 * scale);
+    hudCtx.font = getFont(20, '"Segoe UI", sans-serif');
+    hudCtx.fillText(` = ${tCutoff.toFixed(1)} K`, 72 * scale, 95 * scale);
 
     // Variable: tau
-    hudCtx.font = 'bold 22px "Times New Roman", serif';
+    hudCtx.font = getFont(22, '"Times New Roman", serif', 'bold');
     hudCtx.fillStyle = '#58a6ff';
-    hudCtx.fillText('τ', 20, 130);
-    hudCtx.font = '20px "Segoe UI", sans-serif';
-    hudCtx.fillText(` = ${tauText}`, 38, 130);
+    hudCtx.fillText('τ', 20 * scale, 130 * scale);
+    hudCtx.font = getFont(20, '"Segoe UI", sans-serif');
+    hudCtx.fillText(` = ${tauText}`, 38 * scale, 130 * scale);
+
+    // Draw the resize handle (diagonal lines firmly in the bottom right corner)
+    hudCtx.strokeStyle = '#58a6ff';
+    hudCtx.lineWidth = 2 * scale;
+    hudCtx.beginPath();
+    hudCtx.moveTo(HUD_WIDTH - (12 * scale), HUD_HEIGHT - (4 * scale));
+    hudCtx.lineTo(HUD_WIDTH - (4 * scale), HUD_HEIGHT - (12 * scale));
+    hudCtx.moveTo(HUD_WIDTH - (18 * scale), HUD_HEIGHT - (4 * scale));
+    hudCtx.lineTo(HUD_WIDTH - (4 * scale), HUD_HEIGHT - (18 * scale));
+    hudCtx.stroke();
 
     hudTex.needsUpdate = true;
 }
@@ -313,6 +338,46 @@ logoImg.onload = () => {
     drawWatermark();
 };
 
+let hudScale = 1.0;
+
+function updateOverlayLayout() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    
+    hudScale = Math.min(1, width / 700);
+
+    // 1. Watermark: Strictly pinned to Top-Right
+    const scaledWmWidth = WM_WIDTH * hudScale;
+    const scaledWmHeight = WM_HEIGHT * hudScale;
+    wmSprite.scale.set(scaledWmWidth, scaledWmHeight, 1);
+    wmSprite.position.set(
+        (width / 2) - (scaledWmWidth / 2) - 15,   // 15px from Right
+        (height / 2) - (scaledWmHeight / 2) - 15, // 15px from Top
+        0
+    );
+
+    // 2. HUD Box: Strictly pinned to Top-Left
+    const scaledHudWidth = HUD_WIDTH * hudScale;
+    const scaledHudHeight = HUD_HEIGHT * hudScale;
+    hudSprite.scale.set(scaledHudWidth, scaledHudHeight, 1);
+    
+    // Calculate strict 20px padding from the top-left corner
+    const topLeftX = (-width / 2) + (scaledHudWidth / 2) + 20;
+    const topLeftY = (height / 2) - (scaledHudHeight / 2) - 20;
+    
+    hudSprite.position.set(topLeftX, topLeftY, 0);
+
+    // 3. Mouse Instructions: Pinned to Bottom-Left
+    const controlsHint = document.querySelector('.controls-hint');
+    if (controlsHint) {
+        controlsHint.style.transform = `scale(${hudScale})`;
+        controlsHint.style.transformOrigin = 'bottom left'; 
+    }
+}
+
+// Apply the initial layout size right away
+updateOverlayLayout();
+
 // ==========================================
 // MOUSE DRAG HANDLERS FOR HUD CARD
 // ==========================================
@@ -331,6 +396,18 @@ function getCanvasHUDCoords(e) {
     return new THREE.Vector3(hudX, hudY, 0);
 }
 
+// Variables for dragging and resizing
+let isResizingHUD = false;
+
+let startResizeWidth = 0;
+let startResizeHeight = 0;
+let startMouseX = 0;
+let startMouseY = 0;
+let dragStartTopLeftX = 0;
+let dragStartTopLeftY = 0;
+const MIN_HUD_WIDTH = 180;
+const MIN_HUD_HEIGHT = 150;
+
 renderer.domElement.addEventListener('pointerdown', (e) => {
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
@@ -340,31 +417,78 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
     const intersects = raycaster.intersectObject(hudSprite);
 
     if (intersects.length > 0) {
-        isDraggingHUD = true;
         controls.enabled = false;
-        const clickWorldPos = getCanvasHUDCoords(e);
-        dragOffset.subVectors(hudSprite.position, clickWorldPos);
+        
+        // Check if the click is in the bottom-right corner (uv.x > 0.85 & uv.y < 0.15)
+        const uv = intersects[0].uv; 
+        
+        if (uv.x > 0.85 && uv.y < 0.15) {
+            // Trigger Resize Mode
+            isResizingHUD = true;
+            startResizeWidth = HUD_WIDTH;
+            startResizeHeight = HUD_HEIGHT;
+            startMouseX = e.clientX;
+            startMouseY = e.clientY;
+            
+            // Save the exact top-left point so it scales cleanly outward from it
+            dragStartTopLeftX = hudSprite.position.x - (HUD_WIDTH * hudScale / 2);
+            dragStartTopLeftY = hudSprite.position.y + (HUD_HEIGHT * hudScale / 2);
+        } else {
+            // Standard Drag Mode
+            isDraggingHUD = true;
+            const clickWorldPos = getCanvasHUDCoords(e);
+            dragOffset.subVectors(hudSprite.position, clickWorldPos);
+        }
     }
 });
 
 renderer.domElement.addEventListener('pointermove', (e) => {
+    if (isResizingHUD) {
+        // Calculate mouse movement, adjusted for scale
+        const deltaX = (e.clientX - startMouseX) / hudScale;
+        const deltaY = (e.clientY - startMouseY) / hudScale;
+
+        // Apply new dimensions with a minimum limit
+        HUD_WIDTH = Math.max(MIN_HUD_WIDTH, startResizeWidth + deltaX);
+        HUD_HEIGHT = Math.max(MIN_HUD_HEIGHT, startResizeHeight + deltaY);
+
+        // Update actual canvas and redraw
+        hudCanvas.width = HUD_WIDTH;
+        hudCanvas.height = HUD_HEIGHT;
+        const tCutoff = calculateTCutoff(currentQ, currentT);
+        updateHUD(currentQ, currentT, tCutoff, lastTauText);
+
+        // Apply scale and anchor firmly to its original top-left corner
+        hudSprite.scale.set(HUD_WIDTH * hudScale, HUD_HEIGHT * hudScale, 1);
+        hudSprite.position.x = dragStartTopLeftX + (HUD_WIDTH * hudScale / 2);
+        hudSprite.position.y = dragStartTopLeftY - (HUD_HEIGHT * hudScale / 2);
+        return;
+    }
+
     if (!isDraggingHUD) return;
 
+    // Standard Drag Logic
     const mouseHUDPos = getCanvasHUDCoords(e);
     const newPos = mouseHUDPos.add(dragOffset);
 
-    const minX = -container.clientWidth / 2 + HUD_WIDTH / 2;
-    const maxX = container.clientWidth / 2 - HUD_WIDTH / 2;
-    const minY = -container.clientHeight / 2 + HUD_HEIGHT / 2;
-    const maxY = container.clientHeight / 2 - HUD_HEIGHT / 2;
+    const scaledHudWidth = HUD_WIDTH * hudScale;
+    const scaledHudHeight = HUD_HEIGHT * hudScale;
 
-    hudSprite.position.x = Math.max(minX, Math.min(maxX, newPos.x));
-    hudSprite.position.y = Math.max(minY, Math.min(maxY, newPos.y));
+    const minX = -container.clientWidth / 2 + scaledHudWidth / 2;
+    const maxX = container.clientWidth / 2 - scaledHudWidth / 2;
+    const minY = -container.clientHeight / 2 + scaledHudHeight / 2;
+    const maxY = container.clientHeight / 2 - scaledHudHeight / 2;
+
+    const clampedX = Math.max(minX, Math.min(maxX, newPos.x));
+    const clampedY = Math.max(minY, Math.min(maxY, newPos.y));
+    
+    hudSprite.position.set(clampedX, clampedY, 0);
 });
 
 window.addEventListener('pointerup', () => {
-    if (isDraggingHUD) {
+    if (isDraggingHUD || isResizingHUD) {
         isDraggingHUD = false;
+        isResizingHUD = false;
         controls.enabled = true;
     }
 });
@@ -376,8 +500,30 @@ const FLIP_SPEED = 0.4;
 
 function updateParticleState(p) {
     if (currentTau !== Infinity && currentTau > 0) {
-        const logTau = Math.log10(currentTau);
-        const flipProbability = Math.max(0.0002, Math.min(0.25, 0.20 - (logTau + 11) * 0.014));
+        let baseProbability = 0;
+
+        // 1. MANUALLY FORCED VISUAL TIERS FOR PRESENTATION
+        if (currentQ >= 1.1) {
+            baseProbability = 0.15; 
+        } else if (currentQ === 1.0) {
+            baseProbability = 0.05; 
+        } else if (currentQ === 0.9) {
+            baseProbability = 0.01; 
+        } else if (currentQ === 0.8) {
+            baseProbability = 0.002; 
+        } else if (currentQ <= 0.7) {
+            baseProbability = 0.0003; 
+        }
+
+        // 2. APPLY TEMPERATURE SCALING
+        // Centers at 150K (multiplier = 1.0). 
+        // Exponentially scales up as it gets hotter, slows down as it gets colder.
+        const tempModifier = Math.exp((currentT - 150) / 25);
+        
+        let flipProbability = baseProbability * tempModifier;
+
+        // Cap the absolute max chance per frame so the fastest states don't visually break at 200K
+        flipProbability = Math.min(0.35, flipProbability);
 
         if (!p.isFlipping && Math.random() < flipProbability) {
             p.isFlipping = true;
@@ -403,6 +549,7 @@ function updateParticleState(p) {
             p.currentDir.applyAxisAngle(p.rotationAxis, stepAngle).normalize();
         }
     } else if (currentTau === Infinity) {
+        // The system still strictly obeys the T_cutoff freeze physics
         p.currentDir.copy(p.baseDir);
     }
 }
@@ -485,23 +632,29 @@ function updatePhysics(q, tVal) {
     let eqText = "";
 
     if (q === 1.0) {
+        // Normal Diffusion (Baseline)
         tau = TAU_0 * Math.exp(DELTA_V_KB / currentT);
         eqText = "$$\\tau = \\tau_0 \\exp\\left(\\frac{\\Delta V}{k_B T}\\right)$$";
+        
     } else if (q < 1.0) {
+        // SUBDIFFUSIVE (q < 1): Always strictly larger than q=1
         if (currentT <= T_cutoff) {
-            tau = Infinity;
+            tau = Infinity; // System freezes completely
         } else {
             const base = (currentT + T_star) / (currentT - T_cutoff);
             const exponent = (3 - q) / (2 * (1 - q));
             tau = TAU_0 * Math.pow(base, exponent);
         }
         eqText = "$$\\tau = \\tau_0 \\left( \\frac{T + T^*}{T - T_{cutoff}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
+        
     } else if (q > 1.0) {
+        // SUPERDIFFUSIVE (q > 1): Always strictly smaller than q=1
         const base = (currentT - T_star) / (currentT + T_cutoff);
+        
         if (base <= 0) {
-            tau = 0;
+            tau = 0; // Instantaneous relaxation
         } else {
-            const exponent = (3 - q) / (2 * (1 - q));
+            const exponent = (3 - q) / (2 * (1 - q)); 
             tau = TAU_0 * Math.pow(base, exponent);
         }
         eqText = "$$\\tau = \\tau_0 \\left( \\frac{T - T^*}{T + T_{cutoff}} \\right)^{\\frac{3-q}{2(1-q)}}$$";
@@ -548,7 +701,9 @@ function updatePhysics(q, tVal) {
             MathJax.typesetPromise([eqDiv]).catch((err) => console.error(err.message));
         }
     }
-
+// Save the text so the resize function can redraw it smoothly
+    lastTauText = tauText; 
+    
     // Update Floating Canvas HUD Card
     updateHUD(q, currentT, T_cutoff, tauText);
 }
@@ -616,19 +771,26 @@ infoToggleBtn.addEventListener('click', function () {
 });
 
 window.addEventListener('resize', () => {
+    // Get the exact new dimensions of the container
     const width = container.clientWidth;
     const height = container.clientHeight;
+
+    // 1. Update Main 3D Camera
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+
+    // 2. Update Renderer
     renderer.setSize(width, height);
 
+    // 3. Update HUD Camera boundaries (Crucial for the resize math to work!)
     hudCamera.left = -width / 2;
     hudCamera.right = width / 2;
     hudCamera.top = height / 2;
     hudCamera.bottom = -height / 2;
     hudCamera.updateProjectionMatrix();
 
-    wmSprite.position.set(width / 2 - WM_WIDTH / 2 - 15, height / 2 - WM_HEIGHT / 2 - 15, 0);
+    // 4. Re-apply the layout math now that the camera matches the screen
+    updateOverlayLayout();
 });
 
 // ==========================================
@@ -769,7 +931,7 @@ function resetToDefaults() {
     if (tauLabel) tauLabel.innerText = "0.00 s";
     if (tLabel) tLabel.innerText = "150 K";
     if (tCutoffLabel) tCutoffLabel.innerText = "0.0 K";
-    if (eqDiv) eqDiv.innerHTML = '<span id="eqPlaceholder">Select q-parameter</span>';
+    if (eqDiv) eqDiv.innerHTML = '';
 
     updateHUD(1.0, 150, 0, "Select q");
 }
